@@ -1,0 +1,10 @@
+# 柏連前端建置順序
+00-seed-and-state.jsx
+20-documents.jsx
+30-audit-workflow.jsx
+40-operations.jsx
+41-equipment-supplier.jsx
+50-dashboard-kpi.jsx
+60-training-production.jsx
+70-ai-report.jsx
+10-app.jsx

@@ -1,0 +1,7217 @@
+import { useState, useEffect, useRef } from "react";
+
+// ─── INITIAL DATA ─────────────────────────────────────────────────────────────
+// 儀器資料來源：9量測資源管理程序/記錄/9.1量規儀器一覽表、9.2量規儀器履歷表
+// 初始畫面只作備援顯示，實際仍以 API 載入柏連來源資料為主
+const initialInstruments = [
+  { id: "BRA-01", name: "傅立葉轉換紅外線譜儀系統", type: "FTIR",
+    location: "品管課", keeper: "程鼎智", brand: "",
+    model: "", serialNo: "", calibMethod: "免校",
+    calibratedDate: "", intervalDays: 0,
+    status: "免校正", needsMSA: false },
+  { id: "BRA-02", name: "多功能測量儀器", type: "量測儀器",
+    location: "品管課", keeper: "程鼎智", brand: "",
+    model: "", serialNo: "", calibMethod: "內校",
+    calibratedDate: "2024-08-01", intervalDays: 183,
+    status: "合格", needsMSA: false },
+  { id: "BRA-06", name: "攜帶型數位屈折度計", type: "屈折度計",
+    location: "品管課", keeper: "程鼎智", brand: "",
+    model: "", serialNo: "", calibMethod: "內校",
+    calibratedDate: "2024-09-02", intervalDays: 183,
+    status: "合格", needsMSA: false },
+];
+
+const initialDocuments = [];
+
+const initialManuals = [];
+
+const initialTraining = [
+  { id: "EMP-001", name: "劉哲驊", dept: "管理部", role: "協理", hireDate: "2021-07-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-002", name: "蔡有為", dept: "管理部", role: "部長", hireDate: "2021-07-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-003", name: "林佑翰", dept: "業務部", role: "組長", hireDate: "2022-09-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-004", name: "詹博智", dept: "生產課", role: "組長", hireDate: "2024-03-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+    { course: "量測儀器校正與管理訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-005", name: "程鼎智", dept: "品管課", role: "課長", hireDate: "2021-07-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-006", name: "吳澤仁", dept: "業務部", role: "部長", hireDate: "2021-07-01", trainings: [
+    { course: "ISO9001品質管理標準教育訓練班", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "ISO9001內部稽核員訓練", date: "", type: "外訓", result: "合格", cert: "無" },
+    { course: "品質管理程序文件訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-007", name: "林育陞", dept: "", role: "", hireDate: "", trainings: [
+    { course: "產品相關作業操作及檢驗標準訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+    { course: "消防常識與火災預防", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-008", name: "楊麗璇", dept: "", role: "", hireDate: "", trainings: [
+    { course: "產品相關作業操作及檢驗標準訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+    { course: "消防常識與火災預防", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-009", name: "朱姿霖", dept: "", role: "", hireDate: "", trainings: [
+    { course: "產品相關作業操作及檢驗標準訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+  { id: "EMP-010", name: "陳宥穎", dept: "", role: "", hireDate: "", trainings: [
+    { course: "產品相關作業操作及檢驗標準訓練", date: "", type: "內訓", result: "合格", cert: "無" },
+  ]},
+];
+
+// 設備資料來源：8 設施設備管理程序/記錄/8.1機器設備一覽表.xlsx
+// 初始畫面只作暫存顯示，實際仍以 API 載入柏連來源資料為主
+const initialEquipment = [
+  { id: "BRM-001", name: "攪拌槽", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音", "洩水閥功能確認"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-002", name: "過濾機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-003", name: "純水系統", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-004", name: "PLC進料機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-005", name: "PLC裝填機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-006", name: "自動壓蓋機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-007", name: "二合一排煙機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+  { id: "BRM-008", name: "電動堆高機", location: "管理部", lastMaintenance: "", intervalDays: 30, nextItems: ["外觀清潔", "檢查電線完整無破損", "檢查配件無缺少", "運作正常無異音"], sourceSystem: "burlan_equipment_records" },
+];
+
+// 供應商資料來源：12 採購及供應商管理程序/記錄/12.2供應商評鑑表(*).docx
+// 初始畫面只作暫存顯示，實際仍以 API 載入柏連來源資料為主
+const initialSuppliers = [
+  { id: "SUP-BR-001", name: "良器", category: "採購供應商", contact: "", lastEvalDate: "2025-12-31", evalScore: 95, evalResult: "滿意", evalIntervalDays: 183, issues: [], sourceSystem: "burlan_supplier_records" },
+  { id: "SUP-BR-002", name: "合億", category: "採購供應商", contact: "", lastEvalDate: "2025-12-31", evalScore: 93, evalResult: "滿意", evalIntervalDays: 183, issues: [], sourceSystem: "burlan_supplier_records" },
+  { id: "SUP-BR-003", name: "于正瓶罐", category: "採購供應商", contact: "", lastEvalDate: "2025-12-31", evalScore: 85, evalResult: "普通", evalIntervalDays: 183, issues: ["服務態度：普通", "交期配合：普通"], sourceSystem: "burlan_supplier_records" },
+];
+
+const ENABLE_ENVIRONMENT_MODULE = false;
+
+// 不符合資料來源：15 不符合及矯正措施管理程序/記錄/15.1.1~15.1.2 不符合及矯正措施報告表.docx
+// 共2筆有文件記錄；原假造的5筆（NC-2025-001~005）已移除
+const initialNonConformances = [
+  { id: "NC-2025-001", date: "2025-11-12",
+    dept: "品管課", type: "人員作業",
+    description: "在品檢室進行作業時，不慎撞到已洗完待檢測的玻璃，導致掉落地板破裂。",
+    severity: "輕微",
+    rootCause: "品管作業員在作業時不慎撞到 FOSB 盒，導致盒子掉落並摔破玻璃片。",
+    correctiveAction: "作業員立即清理現場並確認無玻璃碎片殘留，另行包裝破碎玻璃片至包裝袋並隔離儲存；主管提醒作業員注意各物品擺放。",
+    responsible: "林佑翰", dueDate: "", status: "已關閉", closeDate: "2025-11-12", effectiveness: "有效" },
+  { id: "NC-2026-001", date: "2026-01-28",
+    dept: "品檢課", type: "人員作業",
+    description: "品檢人員於 AOI 檢驗後取出 NG 品放置 FOSB，中途玻璃脫落導致破片。",
+    severity: "輕微",
+    rootCause: "AOI 測試判定 NG 後，取出放置 NG FOSB 時操作不慎，玻璃脫落破片。",
+    correctiveAction: "加強作業員操作訓練，明確規範 FOSB 取放動作要領，並更新作業 SOP。",
+    responsible: "朱姿霖", dueDate: "", status: "處理中", closeDate: "", effectiveness: "" },
+];
+
+// 稽核計畫資料來源：9 內部稽核管理程序/記錄/內部稽核114年度/
+// 9.5 品質稽核報告書（114/09/04~05 全廠，稽核員蔡有為，20 OK 4 NG）
+// 9.4 內部稽核矯正通知單（114/06/23 品管課，稽核員蔡有為，發出矯正通知）
+// 原假造的9筆（IA-2025-01~06, IA-2026-01~03）已移除
+const initialAuditPlans = [
+  { id: "IA-2025-01", year: 2025, period: "下半年", scheduledDate: "2025-09-04",
+    dept: "全廠", scope: "MM-01,MP-01,MP-02,MP-04,MP-17,MP-18",
+    auditor: "蔡有為", auditee: "程鼎智",
+    status: "已完成", actualDate: "2025-09-05", findings: 4, ncCount: 1 },
+  { id: "IA-2025-02", year: 2025, period: "上半年", scheduledDate: "2025-06-23",
+    dept: "品管課", scope: "MP-16,MP-19,MP-20",
+    auditor: "蔡有為", auditee: "程鼎智",
+    status: "已完成", actualDate: "2025-06-23", findings: 1, ncCount: 1 },
+];
+
+// 環境監測：查無 6 工作環境管理程序/記錄/ 下的實際環境監測紀錄
+// 原假造的9筆（ENV-001~009）已移除，待實際量測後再填入
+const initialEnvRecords = [];
+
+const initialProdRecords = [
+  { lot:"LOT-20260301-A", customer:"TSMC", product:"Wafer Clean", input:1200, good:1180, defect:20, yieldRate:98.3, defectReasons:["particle","scratch"], operator:"Operator A", note:"first article checked" },
+  { lot:"LOT-20260302-B", customer:"VIS", product:"Final Clean", input:860, good:822, defect:38, yieldRate:95.6, defectReasons:["AOI NG","edge crack"], operator:"Operator B", note:"codes classified" },
+];
+
+const initialQualityRecords = [
+  { materialName:"IPA Cleaner", batchNo:"MAT-202603-01", quantity:"20L", spec:"PH 6.5-7.5 / density 0.78-0.80", inspQty:"3 bottles", ph:"7.0", density:"0.79", ri:"1.37", rotation:"0.0", result:"PASS", note:"within spec" },
+  { materialName:"Developer", batchNo:"MAT-202603-02", quantity:"10L", spec:"PH 10.5-11.0 / density 1.01-1.05", inspQty:"2 bottles", ph:"10.8", density:"1.03", ri:"1.42", rotation:"0.0", result:"PASS", note:"sample checked" },
+];
+
+
+
+
+function sortByDocumentId(items) {
+  return [...items].sort((a, b) => String(a.id || "").localeCompare(String(b.id || ""), "zh-Hant", { numeric: true, sensitivity: "base" }));
+}
+
+function buildIsoDocumentMap(documents, manuals) {
+  const firstLevel = [];
+  const procedures = [];
+  const thirdLevelMap = new Map();
+  const procedureMap = new Map();
+  const orphanForms = [];
+  const orphanRecords = [];
+
+  const getProcedureKey = id => {
+    const match = String(id || "").match(/^MP-(\d+)/i);
+    return match ? String(parseInt(match[1], 10)).padStart(2, "0") : "";
+  };
+
+  const addThirdLevel = doc => {
+    if (!doc || !doc.id) return;
+    if (!thirdLevelMap.has(doc.id)) thirdLevelMap.set(doc.id, doc);
+  };
+
+  documents.forEach(doc => {
+    if (/^MM-/i.test(doc.id) || doc.type === "管理手冊") {
+      firstLevel.push(doc);
+      return;
+    }
+    if (/^MP-/i.test(doc.id)) {
+      procedures.push(doc);
+      procedureMap.set(getProcedureKey(doc.id), { procedure: doc, forms: [], records: [] });
+      return;
+    }
+    if (/^RW-/i.test(doc.id) || doc.type === "作業指導書") {
+      addThirdLevel(doc);
+    }
+  });
+
+  manuals.forEach(addThirdLevel);
+
+  documents.forEach(doc => {
+    const match = String(doc.id || "").match(/^(FR|RC)-(\d+)/i);
+    if (!match) return;
+    const bucket = procedureMap.get(String(parseInt(match[2], 10)).padStart(2, "0"));
+    if (!bucket) {
+      if (match[1].toUpperCase() === "FR") orphanForms.push(doc);
+      else orphanRecords.push(doc);
+      return;
+    }
+    if (match[1].toUpperCase() === "FR") bucket.forms.push(doc);
+    else bucket.records.push(doc);
+  });
+
+  const bundles = procedures
+    .map(proc => {
+      const key = getProcedureKey(proc.id);
+      const bucket = procedureMap.get(key) || { procedure: proc, forms: [], records: [] };
+      return {
+        procedure: proc,
+        forms: sortByDocumentId(bucket.forms),
+        records: sortByDocumentId(bucket.records),
+      };
+    })
+    .sort((a, b) => String(a.procedure.id).localeCompare(String(b.procedure.id), "zh-Hant", { numeric: true, sensitivity: "base" }));
+
+  return {
+    firstLevel: sortByDocumentId(firstLevel),
+    secondLevel: sortByDocumentId(procedures),
+    thirdLevel: sortByDocumentId(Array.from(thirdLevelMap.values())),
+    bundles,
+    orphanForms: sortByDocumentId(orphanForms),
+    orphanRecords: sortByDocumentId(orphanRecords),
+  };
+}
+
+function IsoDocumentCard({ doc, accent = "#60a5fa", showPaths = false, containerRef = null, highlighted = false }) {
+  const path = doc.pdfPath || doc.docxPath || doc.fileName || "";
+  return (
+    <div ref={containerRef} style={{ background:highlighted ? "rgba(59,130,246,0.14)" : "rgba(255,255,255,0.03)", border:highlighted ? "1px solid rgba(59,130,246,0.45)" : `1px solid ${accent}33`, borderRadius:14, padding:16, boxShadow: highlighted ? "0 0 0 2px rgba(147,197,253,0.18)" : "none" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
+        <div>
+          <div style={{ fontSize:11, fontFamily:"monospace", color:accent, fontWeight:700 }}>{doc.id}</div>
+          <div style={{ fontSize:14, fontWeight:700, color:"#e2e8f0", marginTop:6 }}>{doc.name}</div>
+        </div>
+        <Badge color={accent}>{doc.type}</Badge>
+      </div>
+      <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:10, fontSize:12, color:"#94a3b8" }}>
+        <span>部門: {doc.department || "未填寫"}</span>
+        <span>版本: v{doc.version || "?"}</span>
+        {doc.author && <span>作者: {doc.author}</span>}
+      </div>
+      {showPaths && path && <div style={{ marginTop:10, fontSize:11, color:"#64748b", wordBreak:"break-all" }}>{path}</div>}
+    </div>
+  );
+}
+
+function IsoProcedureBundle({ bundle, showPaths = false, containerRef = null, highlighted = false }) {
+  const sections = [
+    { title: "表單", items: bundle.forms, color: "#22c55e" },
+    { title: "記錄", items: bundle.records, color: "#f59e0b" },
+  ];
+
+  return (
+    <div ref={containerRef} style={{ background:highlighted ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.025)", border:highlighted ? "1px solid rgba(59,130,246,0.42)" : "1px solid rgba(255,255,255,0.08)", borderRadius:16, padding:18, boxShadow: highlighted ? "0 0 0 2px rgba(147,197,253,0.16)" : "none" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
+        <div>
+          <div style={{ fontSize:11, fontFamily:"monospace", color:"#60a5fa", fontWeight:700 }}>{bundle.procedure.id}</div>
+          <div style={{ fontSize:16, fontWeight:800, color:"#e2e8f0", marginTop:6 }}>{bundle.procedure.name}</div>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:8, fontSize:12, color:"#94a3b8" }}>
+            <span>部門: {bundle.procedure.department || "未填寫"}</span>
+            <span>版本: v{bundle.procedure.version || "?"}</span>
+            <span>表單: {bundle.forms.length}</span>
+            <span>記錄: {bundle.records.length}</span>
+          </div>
+        </div>
+        <Badge color="#60a5fa">二階文件</Badge>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:14, marginTop:18 }}>
+        {sections.map(section => (
+          <div key={section.title} style={{ background:"rgba(15,23,42,0.35)", border:`1px solid ${section.color}22`, borderRadius:12, padding:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:section.color, marginBottom:10 }}>{section.title} ({section.items.length})</div>
+            {section.items.length === 0 ? (
+              <div style={{ fontSize:12, color:"#64748b" }}>目前沒有歸屬到此程序的{section.title}</div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {section.items.map(item => <IsoDocumentCard key={item.id} doc={item} accent={section.color} showPaths={showPaths} />)}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DocumentsManagerTab({ documents, setDocuments, manuals, documentsSourceInfo, focusDocumentId, onFocusDocumentDone }) {
+  const iso = buildIsoDocumentMap(documents, manuals);
+  const itemRefs = useRef({});
+
+  useEffect(() => {
+    if (!focusDocumentId) return;
+    const el = itemRefs.current[focusDocumentId];
+    if (!el) return;
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    const t = setTimeout(() => onFocusDocumentDone?.(), 1200);
+    return () => clearTimeout(t);
+  }, [focusDocumentId, onFocusDocumentDone, iso.firstLevel.length, iso.bundles.length, iso.thirdLevel.length]);
+
+  return (
+    <div>
+      <PageIntro
+        eyebrow="柏連文件中心"
+        title="文件管理（柏連正式文件主清單）"
+        description="這裡是柏連 QMS 文件中心。系統會先以柏連正式文件主清單為基準，再依 ISO 邏輯把一階、二階、三階文件，以及表單與記錄整理到對應程序底下。"
+      >
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <StatCard label="一階文件" value={iso.firstLevel.length} color="#a78bfa" sub="品質手冊 / 管理手冊" />
+          <StatCard label="二階文件" value={iso.secondLevel.length} color="#60a5fa" sub="管理程序" />
+          <StatCard label="三階文件" value={iso.thirdLevel.length} color="#14b8a6" sub="作業指導書" />
+          <StatCard label="表單" value={documents.filter(doc => /^FR-/i.test(doc.id)).length} color="#22c55e" />
+          <StatCard label="記錄" value={documents.filter(doc => /^RC-/i.test(doc.id)).length} color="#f59e0b" />
+        </div>
+        <DocumentsSourceBanner info={documentsSourceInfo} />
+      </PageIntro>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+        <Panel title="第一層：品質手冊與管理手冊" description="這一層放制度總綱與管理原則，是整套 QMS 的最高層文件。" accent="#a78bfa">
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:12 }}>
+            {iso.firstLevel.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#a78bfa" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+          </div>
+        </Panel>
+
+        <Panel title="第二層：管理程序與其表單 / 記錄" description="每一份程序文件下面都會帶出對應表單與記錄，方便你從程序一路追到實際執行紀錄。" accent="#60a5fa">
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            {iso.bundles.map(bundle => <IsoProcedureBundle key={bundle.procedure.id} bundle={bundle} showPaths containerRef={el => { itemRefs.current[bundle.procedure.id] = el; }} highlighted={focusDocumentId === bundle.procedure.id} />)}
+          </div>
+          {(iso.orphanForms.length > 0 || iso.orphanRecords.length > 0) && (
+            <div style={{ marginTop:14, background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:12, padding:14 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#fcd34d", marginBottom:10 }}>未歸屬程序的文件</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))", gap:10 }}>
+                {iso.orphanForms.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#22c55e" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+                {iso.orphanRecords.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#f59e0b" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+              </div>
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="第三層：作業指導書" description="這一層是現場操作、設備使用與細部作業規則，通常最貼近實際執行。" accent="#14b8a6">
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:12 }}>
+            {iso.thirdLevel.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#14b8a6" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+          </div>
+        </Panel>
+
+        <details style={{ background:uiTheme.panel, border:"1px solid " + uiTheme.panelBorder, borderRadius:18, padding:18, boxShadow: uiTheme.shadow }}>
+          <summary style={{ cursor:"pointer", fontSize:14, fontWeight:700, color:"#e2e8f0" }}>進階管理：原始文件清單、上傳與編修</summary>
+          <div style={{ marginTop:18 }}>
+            <DocumentsTab documents={documents} setDocuments={setDocuments} />
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+function LibraryHierarchyTab({ documents, manuals, documentsSourceInfo, focusDocumentId, onFocusDocumentDone }) {
+  const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState("全部");
+  const iso = buildIsoDocumentMap(documents, manuals);
+  const itemRefs = useRef({});
+
+  const matchesSearch = doc => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [doc.id, doc.name, doc.department, doc.docxPath, doc.pdfPath].filter(Boolean).some(value => String(value).toLowerCase().includes(q));
+  };
+
+  const filterByLevel = section => levelFilter === "全部" || levelFilter === section;
+  const filteredBundles = iso.bundles.map(bundle => ({
+    ...bundle,
+    forms: bundle.forms.filter(matchesSearch),
+    records: bundle.records.filter(matchesSearch),
+    visible: matchesSearch(bundle.procedure) || bundle.forms.some(matchesSearch) || bundle.records.some(matchesSearch),
+  })).filter(bundle => bundle.visible);
+  const filteredFirst = iso.firstLevel.filter(matchesSearch);
+  const filteredThird = iso.thirdLevel.filter(matchesSearch);
+
+  useEffect(() => {
+    if (!focusDocumentId) return;
+    const targetDoc = [...iso.firstLevel, ...iso.secondLevel, ...iso.thirdLevel, ...iso.orphanForms, ...iso.orphanRecords].find(doc => doc.id === focusDocumentId);
+    if (targetDoc) {
+      if (iso.firstLevel.some(doc => doc.id === focusDocumentId)) setLevelFilter("一階文件");
+      else if (iso.thirdLevel.some(doc => doc.id === focusDocumentId)) setLevelFilter("三階文件");
+      else setLevelFilter("二階文件");
+      const q = `${targetDoc.id} ${targetDoc.name || ""}`.trim();
+      setSearch(q);
+    }
+    const timer = setTimeout(() => {
+      const el = itemRefs.current[focusDocumentId];
+      if (el) {
+        el.scrollIntoView({ behavior:"smooth", block:"center" });
+      }
+      onFocusDocumentDone?.();
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [focusDocumentId, onFocusDocumentDone, iso.firstLevel.length, iso.secondLevel.length, iso.thirdLevel.length, iso.orphanForms.length, iso.orphanRecords.length]);
+
+  return (
+    <div>
+      <PageIntro
+        eyebrow="柏連文件庫"
+        title="文件庫（柏連正式文件主清單）"
+        description="這裡偏向查詢與閱讀。你可以先依 ISO 層級切換，再用搜尋快速縮小範圍，同時確認目前是不是讀到柏連正式文件主清單。"
+      >
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="搜尋文件名稱、編號、部門或路徑…" style={{ ...inputStyle, flex:1, minWidth:240 }} />
+          {["全部", "一階文件", "二階文件", "三階文件"].map(item => (
+            <button key={item} onClick={() => setLevelFilter(item)} style={levelFilter===item ? buttonStyle("warning") : buttonStyle("secondary")}>{item}</button>
+          ))}
+        </div>
+        <DocumentsSourceBanner info={documentsSourceInfo} />
+      </PageIntro>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+        {filterByLevel("一階文件") && (
+          <Panel title="第一層文件" description="以制度與手冊為主，適合快速看總則與管理原則。" accent="#a78bfa">
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:12 }}>
+              {filteredFirst.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#a78bfa" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+            </div>
+          </Panel>
+        )}
+
+        {filterByLevel("二階文件") && (
+          <Panel title="第二層文件與其表單 / 記錄" description="從程序直接展開其表單和記錄，最適合做稽核追查與缺漏檢查。" accent="#60a5fa">
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              {filteredBundles.map(bundle => <IsoProcedureBundle key={bundle.procedure.id} bundle={bundle} showPaths containerRef={el => { itemRefs.current[bundle.procedure.id] = el; }} highlighted={focusDocumentId === bundle.procedure.id} />)}
+            </div>
+          </Panel>
+        )}
+
+        {filterByLevel("三階文件") && (
+          <Panel title="第三層文件" description="主要用來查看作業指導書與現場執行依據。" accent="#14b8a6">
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:12 }}>
+              {filteredThird.map(doc => <IsoDocumentCard key={doc.id} doc={doc} accent="#14b8a6" showPaths containerRef={el => { itemRefs.current[doc.id] = el; }} highlighted={focusDocumentId === doc.id} />)}
+            </div>
+          </Panel>
+        )}
+
+        {filteredFirst.length === 0 && filteredBundles.length === 0 && filteredThird.length === 0 && (
+          <div style={{ textAlign:"center", padding:"36px 20px", color:"#64748b", fontSize:14 }}>沒有符合篩選條件的文件。</div>
+        )}
+
+        <details style={{ background:uiTheme.panel, border:"1px solid " + uiTheme.panelBorder, borderRadius:18, padding:18, boxShadow: uiTheme.shadow }}>
+          <summary style={{ cursor:"pointer", fontSize:14, fontWeight:700, color:"#e2e8f0" }}>原始文件庫視圖</summary>
+          <div style={{ marginTop:18 }}>
+            <LibraryTab documents={documents} manuals={manuals} />
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+// ─── LIBRARY TAB ──────────────────────────────────────────────────────────────────────────────
+function LibraryTab({ documents, manuals }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("全部");
+  const [preview, setPreview] = useState(null);
+
+  // Merge all docs with pdfs + manuals
+  const allItems = [
+    ...documents.filter(d => d.pdfPath),
+    ...manuals,
+  ];
+  const types = ["全部", "管理手冊", "管理程序", "作業指導書"];
+  const filtered = allItems.filter(d => {
+    const matchType = typeFilter === "全部" || d.type === typeFilter;
+    const q = search.toLowerCase();
+    const matchSearch = !q || d.name.toLowerCase().includes(q) || d.id.toLowerCase().includes(q) || (d.department||"").toLowerCase().includes(q);
+    return matchType && matchSearch;
+  });
+
+  const typeColor = t => t==="管理手冊"?"#a78bfa":t==="管理程序"?"#60a5fa":"#34d399";
+
+  return (
+    <div>
+      <SectionHeader title="文件庫（PDF 檔案）" count={allItems.length} color="#f97316" />
+      <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+        <StatCard label="管理手冊" value={allItems.filter(d=>d.type==="管理手冊").length} color="#a78bfa" />
+        <StatCard label="管理程序" value={allItems.filter(d=>d.type==="管理程序").length} color="#60a5fa" />
+        <StatCard label="作業指導書" value={allItems.filter(d=>d.type==="作業指導書").length} color="#34d399" />
+        <StatCard label="總計" value={allItems.length} color="#f97316" />
+      </div>
+
+      {/* Search & Filter bar */}
+      <div style={{ display:"flex", gap:10, marginBottom:18, flexWrap:"wrap" }}>
+        <input
+          type="text" value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="搜尋文件名稱、編號、部門…"
+          style={{ ...inputStyle, flex:1, minWidth:200, padding:"10px 14px" }}
+        />
+        <div style={{ display:"flex", gap:6 }}>
+          {types.map(t => (
+            <button key={t} onClick={()=>setTypeFilter(t)} style={{
+              background: typeFilter===t ? "linear-gradient(135deg,#ea580c,#f97316)" : "rgba(255,255,255,0.05)",
+              border: "1px solid " + (typeFilter===t ? "#f97316" : "rgba(255,255,255,0.1)"),
+              borderRadius:8, color: typeFilter===t?"#fff":"#94a3b8",
+              cursor:"pointer", padding:"8px 14px", fontSize:12, fontWeight:600
+            }}>{t}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Document Cards Grid */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:14 }}>
+        {filtered.map(doc => (
+          <div key={doc.id} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div style={{ fontSize:11, fontFamily:"monospace", color:"#60a5fa", fontWeight:700 }}>{doc.id}</div>
+              <Badge color={typeColor(doc.type)}>{doc.type}</Badge>
+            </div>
+            {/* Name */}
+            <div style={{ fontSize:14, fontWeight:700, color:"#e2e8f0", lineHeight:1.4 }}>{doc.name}</div>
+            {/* Description (for manuals) */}
+            {doc.desc && <div style={{ fontSize:12, color:"#64748b", lineHeight:1.5 }}>{doc.desc}</div>}
+            {/* Meta */}
+            <div style={{ display:"flex", gap:12, fontSize:11, color:"#64748b", flexWrap:"wrap" }}>
+              <span>版本: <b style={{color:"#4ade80"}}>v{doc.version}</b></span>
+              <span>部門: {doc.department}</span>
+              {doc.author && <span>作者: {doc.author}</span>}
+            </div>
+            {/* PDF button */}
+            <div style={{ display:"flex", gap:8, marginTop:4 }}>
+              <a
+href={toAbsoluteAppUrl(doc.pdfPath)} target="_blank" rel="noopener noreferrer"
+                style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#ef4444)", color:"#fff",
+                  padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700,
+                  textDecoration:"none", textAlign:"center" }}
+              >
+                &#128196; 開啟 PDF
+              </a>
+              <button onClick={()=>setPreview(doc.pdfPath)} style={{
+                background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.15)",
+                borderRadius:8, color:"#94a3b8", cursor:"pointer",
+                padding:"10px 14px", fontSize:12, fontWeight:600
+              }}>預覽</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <div style={{ textAlign:"center", padding:"40px 0", color:"#475569", fontSize:14 }}>未找到符合條件的文件</div>
+      )}
+
+      {/* PDF Preview Modal (iframe) */}
+      {preview && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:1000, display:"flex", flexDirection:"column" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 20px", background:"rgba(15,23,42,0.95)", borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ fontSize:13, color:"#94a3b8", fontFamily:"monospace" }}>{preview.split("/").pop()}</div>
+            <div style={{ display:"flex", gap:10 }}>
+<a href={toAbsoluteAppUrl(preview)} target="_blank" rel="noopener noreferrer" style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", color:"#fff", padding:"6px 14px", borderRadius:7, fontSize:12, fontWeight:700, textDecoration:"none" }}>在新標籤開啟</a>
+              <button onClick={()=>setPreview(null)} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", borderRadius:7, color:"#e2e8f0", cursor:"pointer", padding:"6px 14px", fontSize:13, fontWeight:700 }}>✕ 關閉</button>
+            </div>
+          </div>
+          <iframe
+src={toAbsoluteAppUrl(preview)}
+            style={{ flex:1, border:"none", background:"#fff" }}
+            title="PDF Preview"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DASHBOARD HOME ──────────────────────────────────────────────────────────
+// ─── SVG CHART PRIMITIVES ────────────────────────────────────────────────────
+
+
+
+function NonConformanceTab({ nonConformances: items, setNonConformances: setItems, highlightNcId, onHighlightDone, expandNcId, onExpandDone, documents, documentsSourceInfo, draftSeed, onDraftSeedConsumed, onAuditPlansSync, onOpenDocument }) {
+  const emptyDraft = { id:"", date:"", dept:"", type:"製程異常", description:"", severity:"輕微", rootCause:"", correctiveAction:"", responsible:"", dueDate:"", status:"待處理", closeDate:"", effectiveness:"", relatedDocument:"", sourceAuditPlanId:"", sourceAuditScope:"" };
+  const [modal, setModal] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [draft, setDraft] = useState(emptyDraft);
+  const [editingId, setEditingId] = useState("");
+  const [showMissingOnly, setShowMissingOnly] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState("");
+  const [importDraft, setImportDraft] = useState(null);
+  const [importMissing, setImportMissing] = useState([]);
+  const rowRefs = useRef({});
+  const ncFieldDefs = [
+    ["編號", "id", "text"],
+    ["發生日", "date", "date"],
+    ["部門", "dept", "text"],
+    ["問題描述", "description", "text"],
+    ["原因分析", "rootCause", "text"],
+    ["改善措施", "correctiveAction", "text"],
+    ["責任人", "responsible", "text"],
+    ["到期日", "dueDate", "date"],
+    ["結案日期", "closeDate", "date"],
+    ["有效性確認", "effectiveness", "text"],
+  ];
+
+  useEffect(() => {
+    if (!highlightNcId) return;
+    const el = rowRefs.current[highlightNcId];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.outline = "2px solid #f59e0b";
+      el.style.outlineOffset = "3px";
+      el.style.transition = "outline 0.2s";
+      const t = setTimeout(() => {
+        el.style.outline = "";
+        el.style.outlineOffset = "";
+        onHighlightDone?.();
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [highlightNcId]);
+
+  useEffect(() => {
+    if (!expandNcId) return;
+    const nc = items.find(item => String(item.id) === String(expandNcId));
+    if (nc) {
+      setModal(nc);
+      onExpandDone?.();
+    }
+  }, [expandNcId]);
+
+  useEffect(() => {
+    if (!draftSeed?.seedKey) return;
+    setShowAdd(true);
+    setEditingId("");
+    setModal(null);
+    setImportDraft(null);
+    setImportMissing([]);
+    setDraft({ ...emptyDraft, ...draftSeed });
+    setMessage("已由稽核計畫帶入不符合草稿，請補上問題描述後存入。");
+    onDraftSeedConsumed?.();
+  }, [draftSeed?.seedKey]);
+
+  const normalizeStatus = s => (s === "進行中" ? "處理中" : (s || "未分類"));
+  const statusColor = s => {
+    const normalized = normalizeStatus(s);
+    return normalized==="已關閉"?"#22c55e":normalized==="處理中"?"#f97316":normalized==="待處理"?"#ef4444":"#eab308";
+  };
+  const sevColor = s => s==="重大"?"#ef4444":s==="中度"?"#eab308":"#60a5fa";
+  const enriched = items.map(item => {
+    const normalizedStatus = normalizeStatus(item.status);
+    const missingFields = [];
+    if (!String(item.date || "").trim()) missingFields.push("發生日");
+    if (!String(item.responsible || "").trim()) missingFields.push("責任人");
+    if (!String(item.rootCause || "").trim()) missingFields.push("原因分析");
+    if (!String(item.correctiveAction || "").trim()) missingFields.push("改善措施");
+    if (!String(item.dueDate || "").trim()) missingFields.push("到期日");
+    return {
+      ...item,
+      normalizedStatus,
+      missingFields,
+      hasMissingFields: missingFields.length > 0,
+      overdue: normalizedStatus !== "已關閉" && daysUntil(item.dueDate) < 0,
+    };
+  });
+  const missingItemCount = enriched.filter(item => item.hasMissingFields).length;
+  const visibleItems = showMissingOnly ? enriched.filter(item => item.hasMissingFields) : enriched;
+  const sortedEnriched = [...visibleItems].sort((a, b) => {
+    const aTime = Date.parse(a.date || "") || 0;
+    const bTime = Date.parse(b.date || "") || 0;
+    return bTime - aTime || String(a.id || "").localeCompare(String(b.id || ""), "zh-Hant");
+  });
+  const yearGroups = sortedEnriched.reduce((acc, item) => {
+    const year = String(item.date || "").slice(0, 4) || "未填日期";
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(item);
+    return acc;
+  }, {});
+  const yearGroupEntries = Object.entries(yearGroups).sort((a, b) => {
+    if (a[0] === "未填日期") return 1;
+    if (b[0] === "未填日期") return -1;
+    return Number(b[0]) - Number(a[0]);
+  });
+  const statusCounts = enriched.reduce((acc, item) => {
+    const key = item.normalizedStatus;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const officialDocuments = (documents || []).filter(doc => /^(MM|MP)-/i.test(doc.id || ""));
+  const linkedDocumentCount = enriched.filter(item => resolveRelatedDocument(item.relatedDocument, officialDocuments).doc).length;
+  const pendingLinkedCount = enriched.filter(item => {
+    const matched = resolveRelatedDocument(item.relatedDocument, officialDocuments).doc;
+    return matched && matched.reviewStatus && matched.reviewStatus !== "主清單一致";
+  }).length;
+
+  function resetDraftForm() {
+    setShowAdd(false);
+    setEditingId("");
+    setDraft(emptyDraft);
+  }
+
+  function startAddRecord() {
+    setEditingId("");
+    setImportDraft(null);
+    setImportMissing([]);
+    setDraft(emptyDraft);
+    setShowAdd(true);
+  }
+
+  function startEditRecord(item) {
+    setEditingId(item.id || "");
+    setImportDraft(null);
+    setImportMissing([]);
+    setModal(null);
+    setDraft({
+      ...emptyDraft,
+      ...item,
+      status: item.normalizedStatus || item.status || "待處理",
+    });
+    setShowAdd(true);
+  }
+
+  async function persistRecord(record, doneMessage) {
+    setBusy("save");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/nonconformances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record }),
+      });
+      setItems(payload.items || []);
+      onAuditPlansSync?.(payload.audit_plans || []);
+      setMessage(doneMessage);
+      return true;
+    } catch (err) {
+      setMessage("存檔失敗：" + err.message);
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveDraftRecord() {
+    const ok = await persistRecord(draft, editingId ? "已修正不符合報告。" : "已新增不符合報告。");
+    if (!ok) return;
+    resetDraftForm();
+  }
+
+  async function closeRecord(item) {
+    const ok = await persistRecord({ ...item, status: "已關閉", closeDate: new Date().toISOString().split("T")[0], effectiveness: item.effectiveness || "有效" }, "已更新為結案。");
+    if (ok) setModal(null);
+  }
+
+  async function deleteRecord(id) {
+    if (!window.confirm("確定要刪除這筆不符合報告嗎？")) return;
+    setBusy("delete");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/nonconformances/" + encodeURIComponent(id), { method: "DELETE" });
+      setItems(payload.items || []);
+      onAuditPlansSync?.(payload.audit_plans || []);
+      setModal(null);
+      setMessage("已刪除不符合報告。");
+    } catch (err) {
+      setMessage("刪除失敗：" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function importFile(file) {
+    if (!file) return;
+    setBusy("import");
+    setMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const payload = await apiJson("/api/nonconformances/import", { method: "POST", body: formData });
+      setImportDraft(payload.draft || null);
+      setImportMissing(payload.missing_fields || []);
+      setMessage("已讀取檔案，請確認資料後再存入。");
+    } catch (err) {
+      setMessage("匯入失敗：" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function confirmImport() {
+    if (!importDraft) return;
+    const ok = await persistRecord(importDraft, "已匯入不符合報告。");
+    if (!ok) return;
+    setImportDraft(null);
+    setImportMissing([]);
+  }
+
+  function openRelatedDocument(docId, targetTab = "documents") {
+    if (!docId) return;
+    onOpenDocument?.(docId, targetTab);
+  }
+
+  return (
+    <div>
+      <SectionHeader title="不符合管理（MP-20）" count={items.length} color="#f87171" />
+      <div style={{ marginBottom: 18 }}>
+        <DocumentsSourceBanner info={documentsSourceInfo} />
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="待處理" value={statusCounts["待處理"] || 0} color="#ef4444" sub="尚未開始" />
+        <StatCard label="處理中" value={statusCounts["處理中"] || 0} color="#f97316" sub="追蹤中" />
+        <StatCard label="已關閉" value={statusCounts["已關閉"] || 0} color="#22c55e" sub="已完成" />
+        <StatCard label="已逾期" value={enriched.filter(item=>item.overdue).length} color="#ef4444" sub="需優先處理" />
+        <StatCard label="已連結程序" value={linkedDocumentCount} color="#38bdf8" sub="已對應柏連正式文件" />
+        <StatCard label="待確認程序" value={pendingLinkedCount} color="#f59e0b" sub="主清單仍需人工確認" />
+        <StatCard label="待補資料" value={missingItemCount} color="#a78bfa" sub="缺日期或處理資訊" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12, marginBottom:18 }}>
+        <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:14, marginBottom:10 }}>依年份整理</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {yearGroupEntries.map(([year, records]) => (
+              <span key={year} style={{ background:"rgba(96,165,250,0.12)", border:"1px solid rgba(96,165,250,0.24)", borderRadius:999, color:"#bfdbfe", fontSize:12, fontWeight:700, padding:"6px 10px" }}>
+                {year}：{records.length} 份
+              </span>
+            ))}
+          </div>
+        </div>
+        <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:14, marginBottom:10 }}>依狀態整理</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {[
+              ["待處理", "#ef4444"],
+              ["處理中", "#f97316"],
+              ["已關閉", "#22c55e"],
+            ].map(([label, color]) => (
+              <span key={label} style={{ background:"rgba(255,255,255,0.04)", border:`1px solid ${color}55`, borderRadius:999, color, fontSize:12, fontWeight:700, padding:"6px 10px" }}>
+                {label}：{statusCounts[label] || 0} 份
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:14, flexWrap:"wrap" }}>
+        <div style={{ color:"#fca5a5", fontSize:12 }}>{message || "可刪除錯誤資料，也可上傳報告檔先解析再確認；如知道對應程序，也能直接連到柏連正式文件主清單。"}</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <button onClick={() => setShowMissingOnly(v => !v)} style={{ background: showMissingOnly ? "rgba(167,139,250,0.18)" : "rgba(255,255,255,0.06)", border: `1px solid ${showMissingOnly ? "rgba(167,139,250,0.38)" : "rgba(255,255,255,0.12)"}`, borderRadius:10, color: showMissingOnly ? "#ddd6fe" : "#e2e8f0", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+            {showMissingOnly ? "顯示全部報告" : "只看待補資料"}
+          </button>
+          <label style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+            {busy==="import" ? "讀取中..." : "上傳報告檔"}
+            <input type="file" accept=".docx,.xlsx,.pdf" onChange={e => importFile(e.target.files && e.target.files[0])} style={{ display:"none" }} />
+          </label>
+          <button onClick={startAddRecord} style={{ background: "linear-gradient(135deg, #dc2626, #ef4444)", border: "none", borderRadius: 10, color: "#fff", cursor: "pointer", padding: "9px 18px", fontSize: 13, fontWeight: 700 }}>新增報告</button>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {showMissingOnly && (
+          <div style={{ background:"rgba(167,139,250,0.1)", border:"1px solid rgba(167,139,250,0.22)", borderRadius:12, padding:"12px 14px", color:"#ddd6fe", fontSize:12 }}>
+            目前只顯示仍需補資料的報告。你可以直接按每筆右側的「修正」，補上日期、責任人、原因分析、改善措施或到期日。
+          </div>
+        )}
+        {yearGroupEntries.map(([year, records]) => (
+          <div key={year} style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginTop:8 }}>
+              <div style={{ color:"#e2e8f0", fontWeight:800, fontSize:16 }}>{year === "未填日期" ? "未填日期" : `${year} 年不符合報告`}</div>
+              <div style={{ color:"#94a3b8", fontSize:12 }}>{records.length} 份</div>
+            </div>
+            {records.map(item => {
+          const related = resolveRelatedDocument(item.relatedDocument, officialDocuments);
+          return (
+          <div key={item.id} ref={el => { rowRefs.current[item.id] = el; }} style={{ background: item.overdue?"rgba(239,68,68,0.12)":"rgba(255,255,255,0.03)", border: `1px solid ${item.overdue?"rgba(239,68,68,0.3)":"rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: "14px 18px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 700, color: "#60a5fa", fontFamily: "monospace", fontSize: 13 }}>{item.id}</span>
+                  <Badge color={sevColor(item.severity)}>{item.severity}</Badge>
+                  <Badge color={statusColor(item.status)}>{item.normalizedStatus}</Badge>
+                  {item.overdue && <Badge color="#ef4444">已逾期</Badge>}
+                  {item.hasMissingFields && <Badge color="#a78bfa">待補 {item.missingFields.length} 項</Badge>}
+                  {related.code && <Badge color={related.doc ? "#38bdf8" : "#f59e0b"}>{related.doc ? `關聯 ${related.code}` : `待確認 ${related.code}`}</Badge>}
+                </div>
+                <div style={{ color: "#e2e8f0", fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{item.description}</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>{item.dept} · {item.type} · 發生日 {formatDate(item.date)} · 責任人 {item.responsible || "未填"}</div>
+                {item.hasMissingFields && (
+                  <div style={{ fontSize: 12, color: "#ddd6fe", marginTop: 6 }}>
+                    待補欄位：{item.missingFields.join("、")}
+                  </div>
+                )}
+                {item.sourceAuditPlanId && (
+                  <div style={{ fontSize: 12, color: "#c4b5fd", marginTop: 6 }}>
+                    來源稽核：{item.sourceAuditPlanId}
+                  </div>
+                )}
+                {related.code && (
+                  <div style={{ fontSize: 12, color: related.doc ? "#93c5fd" : "#fcd34d", marginTop: 6 }}>
+                    對應程序：
+                    {related.doc ? (
+                      <>
+                        {" "}
+                        <button onClick={() => openRelatedDocument(related.doc.id, "documents")} style={{ background:"transparent", border:"none", color:"#93c5fd", cursor:"pointer", padding:0, fontSize:12, fontWeight:700, textDecoration:"underline" }}>
+                          {related.doc.id} {related.doc.name}
+                        </button>
+                      </>
+                    ) : `${related.code}（尚未在柏連正式文件主清單找到）`}
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: "right", minWidth: 120 }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>到期日</div>
+                <div style={{ fontWeight: 700, color: item.overdue?"#ef4444":"#e2e8f0", fontSize: 13 }}>{formatDate(item.dueDate)}</div>
+                {item.status==="已關閉" && <div style={{ fontSize: 11, color: "#4ade80", marginTop: 4 }}>結案 {formatDate(item.closeDate)}</div>}
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => setModal(item)} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#94a3b8", cursor: "pointer", padding: "6px 14px", fontSize: 12 }}>詳情</button>
+                <button onClick={() => startEditRecord(item)} style={{ background:"rgba(59,130,246,0.12)", border:"1px solid rgba(59,130,246,0.25)", borderRadius:8, color:"#93c5fd", cursor:"pointer", padding:"6px 14px", fontSize:12 }}>修正</button>
+                <button onClick={() => deleteRecord(item.id)} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"6px 14px", fontSize:12 }}>刪除</button>
+              </div>
+            </div>
+          </div>
+        )})}
+          </div>
+        ))}
+      </div>
+      {modal && (() => {
+        const related = resolveRelatedDocument(modal.relatedDocument, officialDocuments);
+        const relatedUrl = related.doc ? (related.doc.pdfPath || related.doc.docxPath || "") : "";
+        return (
+          <Modal title={`不符合報告：${modal.id}`} onClose={() => setModal(null)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {[["發生日",formatDate(modal.date)],["部門",modal.dept],["類型",modal.type],["嚴重度",modal.severity],["問題描述",modal.description],["原因分析",modal.rootCause],["改善措施",modal.correctiveAction],["責任人",modal.responsible],["到期日",formatDate(modal.dueDate)],["狀態",modal.status],["來源稽核",modal.sourceAuditPlanId || "未連結"],["結案日",formatDate(modal.closeDate)],["有效性",modal.effectiveness||"未填"]].map(([k,v]) => (<div key={k} style={{ display:"flex", gap:12 }}><div style={{ fontSize:12, color:"#64748b", minWidth:90 }}>{k}</div><div style={{ color:"#e2e8f0", fontWeight:600, fontSize:13 }}>{v}</div></div>))}
+              <div style={{ background:"rgba(56,189,248,0.08)", border:"1px solid rgba(56,189,248,0.2)", borderRadius:10, padding:12 }}>
+                <div style={{ fontSize:12, color:"#7dd3fc", marginBottom:8 }}>對應柏連正式文件</div>
+                {!related.code ? (
+                  <div style={{ fontSize:12, color:"#94a3b8" }}>這筆不符合目前還沒有指定對應程序。</div>
+                ) : related.doc ? (
+                  <div style={{ display:"grid", gap:6 }}>
+                    <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:13 }}>{related.doc.id} {related.doc.name}</div>
+                    <div style={{ color:"#94a3b8", fontSize:12 }}>目前狀態：{related.doc.reviewStatus || "未標示"}</div>
+                    {related.doc.reviewReason && <div style={{ color:"#cbd5f5", fontSize:12 }}>{related.doc.reviewReason}</div>}
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
+                      <button onClick={() => openRelatedDocument(related.doc.id, "documents")} style={{ background:"rgba(56,189,248,0.12)", border:"1px solid rgba(56,189,248,0.24)", borderRadius:8, color:"#bae6fd", cursor:"pointer", padding:"7px 12px", fontSize:12, fontWeight:700 }}>
+                        到文件管理定位
+                      </button>
+                      <button onClick={() => openRelatedDocument(related.doc.id, "library")} style={{ background:"rgba(249,115,22,0.12)", border:"1px solid rgba(249,115,22,0.22)", borderRadius:8, color:"#fdba74", cursor:"pointer", padding:"7px 12px", fontSize:12, fontWeight:700 }}>
+                        到文件庫定位
+                      </button>
+                      {relatedUrl && <a href={relatedUrl} target="_blank" rel="noreferrer" style={{ color:"#93c5fd", fontSize:12, textDecoration:"none", display:"inline-flex", alignItems:"center" }}>開啟關聯文件</a>}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize:12, color:"#fcd34d" }}>已填寫 {related.code}，但目前還沒有在柏連正式文件主清單找到完全對應的文件。</div>
+                )}
+              </div>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:8 }}>
+                <button onClick={() => startEditRecord(modal)} style={{ background:"rgba(59,130,246,0.14)", border:"1px solid rgba(59,130,246,0.26)", borderRadius:10, color:"#bfdbfe", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>修正資料</button>
+                {modal.status!=="已關閉" && (<button onClick={() => closeRecord(modal)} style={{ background:"linear-gradient(135deg,#059669,#10b981)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>標記結案</button>)}
+                <button onClick={() => deleteRecord(modal.id)} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:10, color:"#fca5a5", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>刪除這筆資料</button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+      {showAdd && (
+        <Modal title={editingId ? `修正不符合報告：${editingId}` : "新增不符合報告"} onClose={resetDraftForm}>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {draft.sourceAuditPlanId && (
+              <div style={{ background:"rgba(124,58,237,0.12)", border:"1px solid rgba(124,58,237,0.24)", borderRadius:10, padding:12, color:"#ddd6fe", fontSize:12 }}>
+                這份草稿是由稽核計畫 <b>{draft.sourceAuditPlanId}</b> 帶入的，你只要補上具體問題描述與改善內容即可。
+              </div>
+            )}
+            {ncFieldDefs.map(([label, field, type]) => (
+              <div key={field}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div>
+                <input type={type} value={draft[field] || ""} onChange={e=>setDraft({...draft,[field]:e.target.value})} style={inputStyle} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>來源稽核計畫</div>
+              <input type="text" value={draft.sourceAuditPlanId || ""} readOnly style={{ ...inputStyle, opacity:0.85, cursor:"default" }} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>對應程序文件</div>
+              <select value={draft.relatedDocument} onChange={e=>setDraft({...draft,relatedDocument:e.target.value})} style={inputStyle}>
+                <option value="">未指定</option>
+                {officialDocuments.map(doc => <option key={doc.id} value={doc.id}>{getDocumentDisplayLabel(doc)}</option>)}
+              </select>
+              <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>如果這筆不符合是因為某份程序沒有落實，可以在這裡直接連到那份正式文件。</div>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>類型</div>
+              <select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}>
+                <option>製程異常</option><option>文件不符</option><option>人員作業</option><option>客戶投訴</option><option>量測異常</option><option>來料不合格</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>嚴重度</div>
+              <select value={draft.severity} onChange={e=>setDraft({...draft,severity:e.target.value})} style={inputStyle}>
+                <option>輕微</option><option>中度</option><option>重大</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>狀態</div>
+              <select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})} style={inputStyle}>
+                <option>待處理</option><option>進行中</option><option>已關閉</option>
+              </select>
+            </div>
+            <button onClick={saveDraftRecord} disabled={busy==="save"} style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy==="save"?0.6:1 }}>{busy==="save"?"存檔中...":editingId?"確認修正":"確認新增"}</button>
+          </div>
+        </Modal>
+      )}
+      {importDraft && (
+        <Modal title="匯入預覽" onClose={() => { setImportDraft(null); setImportMissing([]); }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {importMissing.length>0 && <div style={{ background:"rgba(250,204,21,0.1)", border:"1px solid rgba(250,204,21,0.24)", borderRadius:8, padding:10, color:"#fde68a", fontSize:12 }}>以下欄位未完整讀取：{importMissing.join("、")}，請先補齊。</div>}
+            {ncFieldDefs.map(([label, field, type]) => (
+              <div key={field}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div>
+                <input type={type} value={importDraft[field]||""} onChange={e=>setImportDraft({...importDraft,[field]:e.target.value})} style={inputStyle} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>對應程序文件</div>
+              <select value={importDraft.relatedDocument||""} onChange={e=>setImportDraft({...importDraft,relatedDocument:e.target.value})} style={inputStyle}>
+                <option value="">未指定</option>
+                {officialDocuments.map(doc => <option key={doc.id} value={doc.id}>{getDocumentDisplayLabel(doc)}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>類型</div>
+              <select value={importDraft.type||"製程異常"} onChange={e=>setImportDraft({...importDraft,type:e.target.value})} style={inputStyle}>
+                <option>製程異常</option><option>文件不符</option><option>人員作業</option><option>客戶投訴</option><option>量測異常</option><option>來料不合格</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>嚴重度</div>
+              <select value={importDraft.severity||"輕微"} onChange={e=>setImportDraft({...importDraft,severity:e.target.value})} style={inputStyle}>
+                <option>輕微</option><option>中度</option><option>重大</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>狀態</div>
+              <select value={importDraft.status||"待處理"} onChange={e=>setImportDraft({...importDraft,status:e.target.value})} style={inputStyle}>
+                <option>待處理</option><option>進行中</option><option>已關閉</option>
+              </select>
+            </div>
+            {importDraft.source_file && (
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:10, color:"#94a3b8", fontSize:12, wordBreak:"break-all" }}>
+                匯入來源：{importDraft.source_file}
+              </div>
+            )}
+            <button onClick={confirmImport} disabled={busy==="save"} style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy==="save"?0.6:1 }}>{busy==="save"?"存檔中...":"確認存入"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function AuditPlanTab({ auditPlans, setAuditPlans, documents, documentsSourceInfo, onCreateNonConformance, nonConformances, setActiveTab, setHighlightNcId, setExpandNcId, onOpenDocument }) {
+  const [modal, setModal] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [sourceYearFilter, setSourceYearFilter] = useState("all");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [importRecords, setImportRecords] = useState([]);
+  const statusColor = s => s==="已完成"?"#22c55e":s==="執行中"?"#60a5fa":s==="計畫中"?"#f97316":"#ef4444";
+  const safeNonConformances = objectRows(nonConformances);
+  const getAuditPlanSourceYear = (plan) => {
+    const sourceFile = String(plan?.source_file || "").trim();
+    if (!sourceFile) return "";
+    const parts = sourceFile.split("\\").filter(Boolean);
+    return parts.find(part => /年度$/.test(part)) || "";
+  };
+
+  const filtered = auditPlans.filter(item => {
+    const statusMatch = filter === "all" || item.status === filter;
+    const yearMatch = sourceYearFilter === "all" || getAuditPlanSourceYear(item) === sourceYearFilter;
+    return statusMatch && yearMatch;
+  });
+  const upcoming = auditPlans.filter(item=>item.status==="計畫中" && daysUntil(item.scheduledDate)<=30 && daysUntil(item.scheduledDate)>=0);
+  const officialDocuments = (documents || []).filter(doc => /^(MM|MP)-/i.test(doc.id || ""));
+  const documentLookup = buildDocumentLookup(officialDocuments);
+  const coveredCodes = Array.from(new Set(auditPlans.flatMap(item => resolveScopeDocuments(item.scope, officialDocuments).codes)));
+  const coveredMatchedCount = coveredCodes.filter(code => documentLookup.has(code)).length;
+  const coveredPendingCount = coveredCodes.filter(code => {
+    const doc = documentLookup.get(code);
+    return doc && doc.reviewStatus && doc.reviewStatus !== "主清單一致";
+  }).length;
+  const uncoveredCodeCount = coveredCodes.length - coveredMatchedCount;
+  const linkedNcSummaries = auditPlans.map(plan => buildAuditPlanNcSummary(plan, safeNonConformances));
+  const totalLinkedNc = linkedNcSummaries.reduce((sum, item) => sum + item.total, 0);
+  const totalOpenLinkedNc = linkedNcSummaries.reduce((sum, item) => sum + item.open, 0);
+  const totalClosedLinkedNc = linkedNcSummaries.reduce((sum, item) => sum + item.closed, 0);
+  const totalOverdueLinkedNc = linkedNcSummaries.reduce((sum, item) => sum + item.overdue, 0);
+  const sourceYearOptions = Array.from(new Set(auditPlans.map(item => getAuditPlanSourceYear(item)).filter(Boolean))).sort((a, b) => b.localeCompare(a, "zh-Hant"));
+
+  const getAuditPlanSourceLabel = (plan) => {
+    const sourceFile = String(plan?.source_file || "").trim();
+    if (!sourceFile) return "";
+    const parts = sourceFile.split("\\").filter(Boolean);
+    const fileName = parts[parts.length - 1] || sourceFile;
+    const yearFolder = getAuditPlanSourceYear(plan);
+    return yearFolder ? `${yearFolder} / ${fileName}` : fileName;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAttachments() {
+      if (!modal) {
+        setAttachments([]);
+        return;
+      }
+      setAttachmentBusy(true);
+      try {
+        const payload = await apiJson("/api/audit-plans/" + encodeURIComponent(modal.id) + "/attachments");
+        if (!cancelled) setAttachments(payload.attachments || []);
+      } catch (err) {
+        if (!cancelled) {
+          setAttachments([]);
+          setMessage("附件讀取失敗：" + err.message);
+        }
+      } finally {
+        if (!cancelled) setAttachmentBusy(false);
+      }
+    }
+    loadAttachments();
+    return () => { cancelled = true; };
+  }, [modal && modal.id]);
+
+  async function persistRecords(records, doneMessage) {
+    setBusy("save");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/audit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records }),
+      });
+      setAuditPlans(payload.items || []);
+      setMessage(doneMessage);
+      return true;
+    } catch (err) {
+      setMessage("存檔失敗：" + err.message);
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function markComplete(plan) {
+    const ok = await persistRecords([{ ...plan, status:"已完成", actualDate:new Date().toISOString().split("T")[0] }], "已更新稽核計畫。");
+    if (ok) setModal(null);
+  }
+
+  async function deletePlan(id) {
+    if (!window.confirm("確定要刪除這筆稽核計畫嗎？")) return;
+    setBusy("delete");
+    try {
+      const payload = await apiJson("/api/audit-plans/" + encodeURIComponent(id), { method:"DELETE" });
+      setAuditPlans(payload.items || []);
+      setModal(null);
+      setMessage("已刪除稽核計畫。");
+    } catch (err) {
+      setMessage("刪除失敗：" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function importPlanFile(file) {
+    if (!file) return;
+    setBusy("import");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const payload = await apiJson("/api/audit-plans/import", { method:"POST", body:formData });
+      setImportRecords(payload.records || []);
+      setMessage((payload.records || []).length ? "已讀取稽核計畫檔，請確認後再存入。" : "檔案已上傳，但目前沒有辨識到可匯入的稽核計畫資料。請確認檔案內容是否已填寫。");
+    } catch (err) {
+      setMessage("匯入失敗：" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function confirmImportPlans() {
+    if (!importRecords.length) return;
+    const records = importRecords.map(({ missing_fields, ...record }) => record);
+    const ok = await persistRecords(records, "已匯入稽核計畫。");
+    if (ok) setImportRecords([]);
+  }
+
+  function updateImportRecord(field, value) {
+    if (importRecords.length !== 1) return;
+    setImportRecords([{ ...importRecords[0], [field]: value }]);
+  }
+
+  function createNonConformanceDraft(plan) {
+    const draft = buildNonConformanceDraftFromAuditPlan(plan, officialDocuments);
+    onCreateNonConformance?.(draft);
+  }
+
+  function openLinkedNonConformance(item) {
+    if (!item?.id) return;
+    setHighlightNcId?.(item.id);
+    setExpandNcId?.(item.id);
+    setModal(null);
+    setActiveTab?.("nonconformance");
+  }
+
+  function openScopeDocument(docId, targetTab = "documents") {
+    if (!docId) return;
+    setModal(null);
+    onOpenDocument?.(docId, targetTab);
+  }
+
+  async function downloadYearBundle() {
+    if (sourceYearFilter === "all") {
+      setMessage("請先選擇一個年度，再下載該年的附件包。");
+      return;
+    }
+    setBusy("bundle");
+    setMessage("");
+    try {
+      const response = await fetch("/api/audit-plans/year-bundle?year=" + encodeURIComponent(sourceYearFilter));
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || ("HTTP " + response.status));
+      }
+      downloadBlob(await response.blob(), `柏連內部稽核附件包_${sourceYearFilter}.zip`);
+      setMessage(`已下載 ${sourceYearFilter} 稽核附件包。`);
+    } catch (err) {
+      setMessage("下載附件包失敗：" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div>
+      <SectionHeader title="稽核計畫（MP-17）" count={auditPlans.length} color="#8b5cf6" />
+      <div style={{ marginBottom: 18 }}>
+        <DocumentsSourceBanner info={documentsSourceInfo} />
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="全部計畫" value={auditPlans.length} color="#8b5cf6" />
+        <StatCard label="已完成" value={auditPlans.filter(item=>item.status==="已完成").length} color="#22c55e" />
+        <StatCard label="執行中" value={auditPlans.filter(item=>item.status==="執行中").length} color="#60a5fa" />
+        <StatCard label="30 天內到期" value={upcoming.length} color="#f97316" sub="需排程確認" />
+        <StatCard label="關聯不符合" value={totalLinkedNc} color="#f97316" sub={totalOpenLinkedNc > 0 ? `待結案 ${totalOpenLinkedNc} 筆` : "目前都已結案"} />
+        <StatCard label="已結案不符合" value={totalClosedLinkedNc} color="#22c55e" sub={totalOverdueLinkedNc > 0 ? `逾期 ${totalOverdueLinkedNc} 筆` : "追蹤正常"} />
+        <StatCard label="涵蓋程序" value={coveredMatchedCount} color="#38bdf8" sub="已對應柏連正式文件" />
+        <StatCard label="待確認程序" value={coveredPendingCount + uncoveredCodeCount} color="#f59e0b" sub="主清單待確認或未對應" />
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:16, flexWrap:"wrap" }}>
+        <div style={{ color:"#c4b5fd", fontSize:12 }}>{message || "可上傳稽核計畫表先解析，再確認存入；範圍欄位會自動對照柏連正式文件主清單。"}</div>
+        <label style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+          {busy==="import" ? "讀取中..." : "上傳稽核計畫檔"}
+          <input type="file" accept=".docx,.xlsx,.pdf" onChange={e => importPlanFile(e.target.files && e.target.files[0])} style={{ display:"none" }} />
+        </label>
+      </div>
+      {upcoming.length>0 && (
+        <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 12, padding: 16, marginBottom: 20 }}>
+          <div style={{ fontSize: 13, color: "#fb923c", fontWeight: 700, marginBottom: 10 }}>30 天內即將執行</div>
+          {upcoming.map(item => (<div key={item.id} style={{ display:"flex", gap:12, alignItems:"center", marginBottom:6 }}><span style={{ color:"#60a5fa", fontFamily:"monospace", fontSize:12 }}>{item.id}</span><span style={{ color:"#e2e8f0", fontSize:13 }}>{item.dept} · {formatDate(item.scheduledDate)}</span><Badge color="#f97316">剩 {daysUntil(item.scheduledDate)} 天</Badge></div>))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {["all","計畫中","執行中","已完成"].map(key => (<button key={key} onClick={()=>setFilter(key)} style={{ background:filter===key?"rgba(139,92,246,0.2)":"rgba(255,255,255,0.04)", border:`1px solid ${filter===key?"rgba(139,92,246,0.5)":"rgba(255,255,255,0.1)"}`, borderRadius:8, color:filter===key?"#c4b5fd":"#64748b", cursor:"pointer", padding:"6px 14px", fontSize:12, fontWeight:600 }}>{key==="all"?"全部":key}</button>))}
+      </div>
+      {sourceYearOptions.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          {["all", ...sourceYearOptions].map(key => (
+            <button
+              key={key}
+              onClick={() => setSourceYearFilter(key)}
+              style={{
+                background: sourceYearFilter===key ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.04)",
+                border:`1px solid ${sourceYearFilter===key ? "rgba(56,189,248,0.4)" : "rgba(255,255,255,0.1)"}`,
+                borderRadius:8,
+                color:sourceYearFilter===key ? "#bae6fd" : "#64748b",
+                cursor:"pointer",
+                padding:"6px 14px",
+                fontSize:12,
+                fontWeight:600
+              }}
+            >
+              {key==="all" ? "全部年度" : key}
+            </button>
+          ))}
+          <button
+            onClick={downloadYearBundle}
+            style={{
+              background:"rgba(34,197,94,0.14)",
+              border:"1px solid rgba(34,197,94,0.3)",
+              borderRadius:8,
+              color:"#bbf7d0",
+              cursor:"pointer",
+              padding:"6px 14px",
+              fontSize:12,
+              fontWeight:700,
+              opacity: busy==="bundle" ? 0.7 : 1
+            }}
+            disabled={busy==="bundle"}
+          >
+            {busy==="bundle" ? "打包中..." : "下載年度附件包"}
+          </button>
+        </div>
+      )}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <thead><tr>{["編號","年度","期別","預定日期","部門","受稽人","稽核員","範圍","狀態","發現數","NC 數",""].map(h => (<th key={h} style={{ textAlign:"left", padding:"10px 12px", color:"#64748b", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap" }}>{h}</th>))}</tr></thead>
+          <tbody>
+            {filtered.map((item,i) => {
+              const scopeInfo = resolveScopeDocuments(item.scope, officialDocuments);
+              const ncSummary = buildAuditPlanNcSummary(item, safeNonConformances);
+              const displayNcCount = ncSummary.total || item.ncCount || 0;
+              return (
+              <tr key={item.id} style={{ background:i%2===0?"rgba(255,255,255,0.02)":"transparent" }}>
+                <td style={{ padding:"10px 12px", color:"#8b5cf6", fontWeight:700, fontFamily:"monospace", whiteSpace:"nowrap" }}>{item.id}</td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8" }}>{item.year}</td>
+                <td style={{ padding:"10px 12px" }}><Badge color={item.period==="上半年"?"#60a5fa":"#f97316"}>{item.period}</Badge></td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8", whiteSpace:"nowrap" }}>{formatDate(item.scheduledDate)}</td>
+                <td style={{ padding:"10px 12px", color:"#e2e8f0", fontWeight:600 }}>{item.dept}</td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8" }}>{item.auditee}</td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8" }}>{item.auditor}</td>
+                <td style={{ padding:"10px 12px", color:"#64748b", fontSize:11 }}>
+                  <div>{item.scope || "未填"}</div>
+                  {getAuditPlanSourceLabel(item) && (
+                    <div style={{ color:"#94a3b8", marginTop:4 }}>
+                      來源：{getAuditPlanSourceLabel(item)}
+                    </div>
+                  )}
+                  {scopeInfo.matchedDocuments.length > 0 && (
+                    <div style={{ color:"#cbd5f5", marginTop:4, display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {scopeInfo.matchedDocuments.slice(0, 2).map(doc => (
+                        <button key={doc.id} onClick={() => openScopeDocument(doc.id, "documents")} style={{ background:"transparent", border:"none", color:"#cbd5f5", cursor:"pointer", padding:0, fontSize:11, textDecoration:"underline" }}>
+                          {doc.id}
+                        </button>
+                      ))}
+                      {scopeInfo.matchedDocuments.length > 2 ? <span>{`等 ${scopeInfo.matchedDocuments.length} 份`}</span> : null}
+                    </div>
+                  )}
+                  {scopeInfo.unmatchedCodes.length > 0 && (
+                    <div style={{ color:"#fcd34d", marginTop:4 }}>
+                      待確認：{scopeInfo.unmatchedCodes.join("、")}
+                    </div>
+                  )}
+                </td>
+                <td style={{ padding:"10px 12px" }}><Badge color={statusColor(item.status)}>{item.status}</Badge></td>
+                <td style={{ padding:"10px 12px", textAlign:"center", color:item.findings>0?"#f97316":"#94a3b8", fontWeight:700 }}>{item.findings}</td>
+                <td style={{ padding:"10px 12px", textAlign:"center", color:displayNcCount>0?"#ef4444":"#94a3b8", fontWeight:700 }}>
+                  <div>{displayNcCount}</div>
+                  {ncSummary.total > 0 ? (
+                    <div style={{ fontSize:10, color:ncSummary.open > 0 ? "#fca5a5" : "#86efac", fontWeight:600, marginTop:4 }}>
+                      未結 {ncSummary.open} / 已結 {ncSummary.closed}
+                    </div>
+                  ) : item.ncCount > 0 ? (
+                    <div style={{ fontSize:10, color:"#94a3b8", fontWeight:600, marginTop:4 }}>
+                      已登錄筆數
+                    </div>
+                  ) : null}
+                </td>
+                <td style={{ padding:"10px 12px" }}><div style={{ display:"flex", gap:8, flexWrap:"wrap" }}><button onClick={()=>setModal(item)} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, color:"#94a3b8", cursor:"pointer", padding:"4px 10px", fontSize:11 }}>詳情</button><button onClick={() => createNonConformanceDraft(item)} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:6, color:"#fca5a5", cursor:"pointer", padding:"4px 10px", fontSize:11 }}>轉不符合</button><button onClick={() => deletePlan(item.id)} style={{ background:"rgba(148,163,184,0.12)", border:"1px solid rgba(148,163,184,0.22)", borderRadius:6, color:"#cbd5e1", cursor:"pointer", padding:"4px 10px", fontSize:11 }}>刪除</button></div></td>
+              </tr>
+            )})}
+          </tbody>
+        </table>
+      </div>
+      {modal && (() => {
+        const scopeInfo = resolveScopeDocuments(modal.scope, officialDocuments);
+        const ncSummary = buildAuditPlanNcSummary(modal, safeNonConformances);
+        const displayNcCount = ncSummary.total || modal.ncCount || 0;
+        return (
+          <Modal title={`稽核計畫：${modal.id}`} onClose={() => setModal(null)}>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+              {[["計畫編號",modal.id],["受稽部門",modal.dept],["預定日期",formatDate(modal.scheduledDate)],["實際日期",formatDate(modal.actualDate)],["稽核員",modal.auditor],["受稽人",modal.auditee],["稽核範圍",modal.scope],["狀態",modal.status],["發現數",String(modal.findings)],["NC 數",String(displayNcCount)]].map(([k,v]) => (<div key={k} style={{ display:"flex", gap:12 }}><div style={{ fontSize:12, color:"#64748b", minWidth:90 }}>{k}</div><div style={{ color:"#e2e8f0", fontWeight:600, fontSize:13 }}>{v}</div></div>))}
+              {getAuditPlanSourceLabel(modal) && (
+                <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:12 }}>
+                  <div style={{ fontSize:12, color:"#c4b5fd", marginBottom:6 }}>來源年度檔案</div>
+                  <div style={{ color:"#e2e8f0", fontSize:13, fontWeight:700 }}>{getAuditPlanSourceLabel(modal)}</div>
+                  <div style={{ color:"#94a3b8", fontSize:12, marginTop:6, wordBreak:"break-all" }}>{modal.source_file}</div>
+                </div>
+              )}
+              <div style={{ background:"rgba(56,189,248,0.08)", border:"1px solid rgba(56,189,248,0.2)", borderRadius:10, padding:12 }}>
+                <div style={{ fontSize:12, color:"#7dd3fc", marginBottom:8 }}>對應柏連正式文件主清單</div>
+                {scopeInfo.matchedDocuments.length === 0 ? (
+                  <div style={{ color:"#94a3b8", fontSize:12 }}>這筆稽核計畫的範圍目前還沒有對應到柏連正式文件主清單。</div>
+                ) : (
+                  <div style={{ display:"grid", gap:10 }}>
+                    {scopeInfo.matchedDocuments.map(doc => {
+                      const docUrl = doc.pdfPath || doc.docxPath || "";
+                      return (
+                        <div key={doc.id} style={{ border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:10 }}>
+                          <div style={{ color:"#e2e8f0", fontSize:13, fontWeight:700 }}>{doc.id} {doc.name}</div>
+                          <div style={{ color:"#94a3b8", fontSize:12, marginTop:4 }}>目前狀態：{doc.reviewStatus || "未標示"}</div>
+                          {doc.reviewReason && <div style={{ color:"#cbd5f5", fontSize:12, marginTop:4 }}>{doc.reviewReason}</div>}
+                          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:6 }}>
+                            <button onClick={() => openScopeDocument(doc.id, "documents")} style={{ background:"rgba(56,189,248,0.12)", border:"1px solid rgba(56,189,248,0.24)", borderRadius:8, color:"#bae6fd", cursor:"pointer", padding:"7px 12px", fontSize:12, fontWeight:700 }}>
+                              到文件管理定位
+                            </button>
+                            <button onClick={() => openScopeDocument(doc.id, "library")} style={{ background:"rgba(249,115,22,0.12)", border:"1px solid rgba(249,115,22,0.22)", borderRadius:8, color:"#fdba74", cursor:"pointer", padding:"7px 12px", fontSize:12, fontWeight:700 }}>
+                              到文件庫定位
+                            </button>
+                            {docUrl && <a href={docUrl} target="_blank" rel="noreferrer" style={{ color:"#93c5fd", fontSize:12, textDecoration:"none", display:"inline-flex", alignItems:"center" }}>開啟程序文件</a>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {scopeInfo.unmatchedCodes.length > 0 && (
+                  <div style={{ color:"#fcd34d", fontSize:12, marginTop:10 }}>
+                    以下代碼還沒有在柏連正式文件主清單對到：{scopeInfo.unmatchedCodes.join("、")}
+                  </div>
+                )}
+              </div>
+              <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:10, padding:12 }}>
+                <div style={{ fontSize:12, color:"#fca5a5", marginBottom:8 }}>關聯不符合追蹤</div>
+                <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:10 }}>
+                  <Badge color="#f97316">未結案 {ncSummary.open}</Badge>
+                  <Badge color="#22c55e">已結案 {ncSummary.closed}</Badge>
+                  {ncSummary.overdue > 0 && <Badge color="#ef4444">逾期 {ncSummary.overdue}</Badge>}
+                  {ncSummary.latestCloseDate && <Badge color="#38bdf8">最近結案 {formatDate(ncSummary.latestCloseDate)}</Badge>}
+                </div>
+                {ncSummary.items.length === 0 ? (
+                  <div style={{ color:"#94a3b8", fontSize:12 }}>這筆稽核計畫目前還沒有連到不符合明細。你可以直接按下方「帶出不符合草稿」新增第一筆。</div>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {ncSummary.items.map(item => (
+                      <div key={item.id} style={{ border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:10, display:"flex", justifyContent:"space-between", gap:12, alignItems:"center", flexWrap:"wrap" }}>
+                        <div style={{ flex:1, minWidth:220 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                            <span style={{ color:"#fca5a5", fontFamily:"monospace", fontSize:12, fontWeight:700 }}>{item.id}</span>
+                            <Badge color={isClosedNonConformanceStatus(item.status) ? "#22c55e" : "#f97316"}>{item.status || "待處理"}</Badge>
+                          </div>
+                          <div style={{ color:"#e2e8f0", fontSize:13, fontWeight:600, marginTop:6 }}>{item.description || "未填寫描述"}</div>
+                          <div style={{ color:"#94a3b8", fontSize:12, marginTop:4 }}>
+                            責任人 {item.responsible || "未填"} · 到期日 {formatDate(item.dueDate)}
+                          </div>
+                        </div>
+                        <button onClick={() => openLinkedNonConformance(item)} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:8, color:"#e2e8f0", cursor:"pointer", padding:"8px 14px", fontSize:12, fontWeight:700 }}>
+                          開啟這筆不符合
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:12 }}>
+                <div style={{ fontSize:12, color:"#c4b5fd", marginBottom:8 }}>關聯附件</div>
+{attachmentBusy ? <div style={{ color:"#94a3b8", fontSize:12 }}>讀取中...</div> : attachments.length===0 ? <div style={{ color:"#94a3b8", fontSize:12 }}>找不到關聯文件。</div> : <div style={{ display:"flex", flexDirection:"column", gap:10 }}>{attachments.map(item => (<div key={item.path} style={{ border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:10 }}><div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap" }}><div><div style={{ color:"#e2e8f0", fontSize:13, fontWeight:600 }}>{item.name}</div><div style={{ color:item.exists?"#64748b":"#fca5a5", fontSize:11 }}>{item.exists ? (item.previewable ? "可直接預覽 PDF" : item.text_previewable ? "可直接預覽文字內容" : "可開啟或下載") : "找不到文件"}</div></div>{item.exists && <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}><a href={toAbsoluteAppUrl(item.download_url)} style={{ color:"#93c5fd", fontSize:12, textDecoration:"none" }}>下載</a>{item.previewable && <a href={toAbsoluteAppUrl(item.view_url)} target="_blank" rel="noreferrer" style={{ color:"#c4b5fd", fontSize:12, textDecoration:"none" }}>新頁預覽</a>}{item.text_previewable && <a href={toAbsoluteAppUrl(item.preview_text_url)} target="_blank" rel="noreferrer" style={{ color:"#c4b5fd", fontSize:12, textDecoration:"none" }}>文字預覽</a>}</div>}</div>{item.previewable && item.exists && <iframe src={toAbsoluteAppUrl(item.view_url)} title={item.name} style={{ width:"100%", height:260, marginTop:10, border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, background:"#fff" }} />}{item.text_previewable && item.exists && <iframe src={toAbsoluteAppUrl(item.preview_text_url)} title={item.name + "-text"} style={{ width:"100%", height:260, marginTop:10, border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, background:"#fff" }} />}</div>))}</div>}
+              </div>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:8 }}>
+                <button onClick={() => createNonConformanceDraft(modal)} style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>帶出不符合草稿</button>
+                {modal.status!=="已完成" && (<button onClick={()=>markComplete(modal)} style={{ background:"linear-gradient(135deg,#7c3aed,#8b5cf6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>標記完成</button>)}
+                <button onClick={()=>deletePlan(modal.id)} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:10, color:"#fca5a5", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>刪除這筆資料</button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+      {importRecords.length>0 && (<Modal title="匯入預覽" onClose={() => setImportRecords([])}><div style={{ display:"flex", flexDirection:"column", gap:12 }}>{importRecords.length===1 ? <div style={{ display:"flex", flexDirection:"column", gap:12 }}>{importRecords[0].missing_fields?.length>0 && <div style={{ background:"rgba(250,204,21,0.1)", border:"1px solid rgba(250,204,21,0.24)", borderRadius:8, padding:10, color:"#fde68a", fontSize:12 }}>以下欄位未完整讀取：{importRecords[0].missing_fields.join("、")}</div>}{[["預定日期","scheduledDate","date"],["受稽部門","dept","text"],["稽核員","auditor","text"],["受稽人","auditee","text"],["稽核範圍","scope","text"]].map(([label,field,type]) => (<div key={field}><div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div><input type={type} value={importRecords[0][field]||""} onChange={e=>updateImportRecord(field, e.target.value)} style={inputStyle} /></div>))}</div> : <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:12 }}><div style={{ color:"#e2e8f0", fontWeight:700, marginBottom:8 }}>本次共讀到 {importRecords.length} 筆資料</div>{importRecords.slice(0,8).map(item => (<div key={item.id} style={{ display:"flex", justifyContent:"space-between", gap:12, borderBottom:"1px solid rgba(255,255,255,0.05)", padding:"8px 0" }}><span style={{ color:"#c4b5fd", fontFamily:"monospace", fontSize:12 }}>{item.id}</span><span style={{ color:"#94a3b8", fontSize:12 }}>{item.dept || "未讀到部門"}</span><span style={{ color:"#94a3b8", fontSize:12 }}>{formatDate(item.scheduledDate)}</span></div>))}</div>}<button onClick={confirmImportPlans} disabled={busy==="save"} style={{ background:"linear-gradient(135deg,#7c3aed,#8b5cf6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy==="save"?0.6:1 }}>{busy==="save"?"存檔中...":"確認存入"}</button></div></Modal>)}
+    </div>
+  );
+}
+
+
+
+function CalibrationTab({ instruments, setInstruments, calibrationSourceInfo, setCalibrationSourceInfo }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const enriched = instruments.map(i => {
+    const nextDate = getInstrumentNextCalibrationDate(i);
+    const days = nextDate ? daysUntil(nextDate) : 9999;
+    return { ...i, nextDate, days };
+  }).sort((a, b) => a.days - b.days);
+  async function handleUpdate() {
+    if (!modal?.id) return;
+    if (!form.date) {
+      setMessage("隢?憛怠神?祆活?⊥迤?交???);
+      return;
+    }
+    try {
+      setSaving(true);
+      setMessage("");
+      const payload = await apiJson("/api/calibration-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          record: {
+            instrumentId: modal.id,
+            instrumentName: modal.name,
+            calibrationDate: form.date,
+            nextCalibration: modal.intervalDays ? addDays(form.date, modal.intervalDays) : "",
+            calibMethod: modal.calibMethod,
+            status: modal.calibMethod === "?" ? "?甇? : "?",
+            operator: form.operator || modal.keeper || "",
+            keeper: modal.keeper || "",
+            location: modal.location || "",
+            frequencyLabel: modal.frequencyLabel || "",
+            note: form.note || "",
+            sourceRecordPath: modal.rawRecordPath || "",
+            sourceInventoryPath: modal.rawInventoryPath || "",
+            sourceReportPath: modal.rawLatestReportPath || "",
+          },
+        }),
+      });
+      const items = (payload.items || []).map(mapCalibrationInstrument);
+      setInstruments(items);
+      setCalibrationSourceInfo?.({
+        mode: payload.mode || "records",
+        source_path: payload.source_path || "",
+        count: payload.count || items.length,
+        latest_plan_path: payload.latest_plan_path || "",
+        inventory_path: payload.inventory_path || "",
+        manual_update_count: payload.manual_update_count || 0,
+        message: payload.message || "",
+      });
+      setMessage(`撌脖?摮?${modal.id} ?甇??啜?敺??圈??頂蝯梧?銋?靽??活蝯??);
+      setModal(null);
+    } catch (err) {
+      setMessage("?⊥迤?湔憭望?嚗? + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  const usingRecords = calibrationSourceInfo?.mode === "records";
+  return (
+    <div>
+      <SectionHeader title="????冽甇?蕭頩? count={enriched.length} color="#60a5fa" />
+      <ModuleStatusBanner
+      title={usingRecords ? "?桀??嚗???祕???? : "?桀??嚗?????渲???}
+        tone={usingRecords ? "mixed" : "demo"}
+        message={usingRecords
+          ? `???歇?湔霈??9?葫鞈?蝞∠?蝔? ??閬??其?閬質”???典悼甇瑁”??函??啁???函楊?甇?撘??∪摰??⊥迤???嚗?臬???祕??隞嗆?靘???{calibrationSourceInfo?.message ? ` ${calibrationSourceInfo.message}` : ""}`
+        : "??????臭誑甇?虜??嚗???蝡舀?瘜?????憿舐內????游??冽??殷??踹?頝喳??航炊撠?鞈???}
+      />
+      {usingRecords && calibrationSourceInfo?.source_path && (
+        <div style={{ marginBottom: 18, fontSize: 12, color: "#94a3b8", wordBreak: "break-all" }}>
+          撅交風銵其?皞?{calibrationSourceInfo.source_path}
+          {calibrationSourceInfo.inventory_path ? ` 嚚?銝閬質”靘?嚗?{calibrationSourceInfo.inventory_path}` : ""}
+          {calibrationSourceInfo.latest_plan_path ? ` 嚚???啣僑摨行撽??”嚗?{calibrationSourceInfo.latest_plan_path}` : ""}
+          {calibrationSourceInfo.manual_update_count ? ` 嚚?蝟餌絞撌脖?摮?${calibrationSourceInfo.manual_update_count} 蝑甇??躬 : ""}
+        </div>
+      )}
+      {message && (
+        <div style={{ marginBottom: 16, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.24)", color: "#bfdbfe", borderRadius: 12, padding: "12px 14px", fontSize: 13 }}>
+          {message}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="?暹?" value={enriched.filter(i => i.days < 0).length} color="#ef4444" />
+        <StatCard label="14憭拙?唳?" value={enriched.filter(i => i.days >= 0 && i.days <= 14).length} color="#f97316" />
+        <StatCard label="甇?虜" value={enriched.filter(i => i.days > 30).length} color="#22c55e" />
+        <StatCard label="?甇? value={enriched.filter(i => i.status === "?甇?).length} color="#6366f1" />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {enriched.map(inst => inst.status === "?甇? ? (
+          <div key={inst.id} style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontWeight: 700, color: "#c7d2fe", fontSize: 14 }}>{inst.name}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                {inst.id} 繚 {inst.location || "?芸‵?圈?"}
+                {inst.calibMethod ? ` 繚 ${inst.calibMethod}` : ""}
+                繚 靽恣鈭?{inst.keeper || "?芸‵"}
+              </div>
+              {inst.manualUpdatedAt && <div style={{ fontSize: 12, color: "#818cf8", marginTop: 6 }}>蝟餌絞?湔?交?嚗formatDate(inst.manualUpdatedAt)}{inst.manualOperator ? ` 繚 ${inst.manualOperator}` : ""}</div>}
+            </div>
+            <Badge color="#6366f1">?甇?/Badge>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {inst.inventoryPath && <a href={inst.inventoryPath} target="_blank" rel="noreferrer" style={{ color:"#93c5fd", fontSize:12, textDecoration:"none" }}>??其?閬質”</a>}
+              {inst.recordPath && <a href={inst.recordPath} target="_blank" rel="noreferrer" style={{ color:"#c4b5fd", fontSize:12, textDecoration:"none" }}>撅交風銵?/a>}
+            </div>
+          </div>
+        ) : (
+          <div key={inst.id} style={{ background: urgencyBg(inst.days), border: `1px solid ${urgencyColor(inst.days)}33`, borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 14 }}>{inst.name}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                {inst.id} 繚 {inst.location} 繚 {inst.type}
+                {inst.frequencyLabel ? ` 繚 ?望? ${inst.frequencyLabel}` : ""}
+                {inst.calibMethod ? ` 繚 ${inst.calibMethod}` : ""}
+                {inst.keeper ? ` 繚 靽恣鈭?${inst.keeper}` : ""}
+                {inst.needsMSA && <span style={{ marginLeft: 8, color: "#818cf8", fontWeight: 700 }}>? MSA</span>}
+              </div>
+              <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 6 }}>?敺甇???{formatDate(inst.calibratedDate)}</div>
+              {inst.manualUpdatedAt && <div style={{ fontSize: 12, color: "#818cf8", marginTop: 6 }}>蝟餌絞?湔?交?嚗formatDate(inst.manualUpdatedAt)}{inst.manualOperator ? ` 繚 ${inst.manualOperator}` : ""}</div>}
+              {inst.manualNote && <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 6 }}>?酉嚗inst.manualNote}</div>}
+            </div>
+            <div style={{ textAlign: "right", minWidth: 120 }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>銝活?⊥迤</div>
+              <div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 14 }}>{formatDate(inst.nextDate)}</div>
+            </div>
+            <Badge color={urgencyColor(inst.days)}>{urgencyLabel(inst.days)}</Badge>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {inst.inventoryPath && <a href={inst.inventoryPath} target="_blank" rel="noreferrer" style={{ color:"#93c5fd", fontSize:12, textDecoration:"none" }}>??其?閬質”</a>}
+              {inst.recordPath && <a href={inst.recordPath} target="_blank" rel="noreferrer" style={{ color:"#93c5fd", fontSize:12, textDecoration:"none" }}>撅交風銵?/a>}
+              {inst.latestReportPath && <a href={inst.latestReportPath} target="_blank" rel="noreferrer" style={{ color:"#fca5a5", fontSize:12, textDecoration:"none" }}>??唳甇???/a>}
+              {inst.latestPlanPath && <a href={inst.latestPlanPath} target="_blank" rel="noreferrer" style={{ color:"#c4b5fd", fontSize:12, textDecoration:"none" }}>撟游漲?⊿?閮?</a>}
+            </div>
+            <button onClick={() => { setModal(inst); setForm({ date: new Date().toISOString().split("T")[0], operator: inst.manualOperator || inst.keeper || "", note: inst.manualNote || "" }); setMessage(""); }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#94a3b8", cursor: "pointer", padding: "6px 14px", fontSize: 12, fontWeight: 600 }}>?湔?⊥迤</button>
+          </div>
+        ))}
+      </div>
+      {modal && (
+        <Modal title={`?湔?⊥迤閮?嚗?{modal.name}`} onClose={() => setModal(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>??函楊??/div><div style={{ color: "#e2e8f0", fontWeight: 600 }}>{modal.id}</div></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?祆活?⊥迤?交?</div><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?瑁?鈭箏</div><input value={form.operator || ""} onChange={e => setForm({ ...form, operator: e.target.value })} style={inputStyle} placeholder="靘?嚗?曌" /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?酉</div><textarea value={form.note || ""} onChange={e => setForm({ ...form, note: e.target.value })} style={{ ...inputStyle, minHeight: 96, resize: "vertical" }} placeholder="靘?嚗歇摰??扳嚗??扳蝯??湔" /></div>
+            <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>?湔敺?銝活?⊥迤?交?撠嚗?/div>
+              <div style={{ color: "#86efac", fontWeight: 700, fontSize: 16, marginTop: 4 }}>{formatDate(addDays(form.date || modal.calibratedDate, modal.intervalDays))}</div>
+            </div>
+            <button onClick={handleUpdate} disabled={saving} style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)", border: "none", borderRadius: 10, color: "#fff", cursor: saving ? "wait" : "pointer", padding: "12px 24px", fontSize: 15, fontWeight: 700, opacity: saving ? 0.75 : 1 }}>{saving ? "靽?銝?.." : "蝣箄??湔?⊥迤閮?"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ??? DOCUMENTS TAB ???????????????????????????????????????????????????????????
+function DocumentsTab({ documents, setDocuments }) {
+  const [modal, setModal]       = useState(null);
+  const [mode, setMode]         = useState(null);   // null | "single" | "bulk"
+  const [err, setErr]           = useState("");
+  const [dragOver, setDragOver] = useState(false);
+
+  // ?? Single-add state ??????????????????????????????????????????????????????
+  const emptyDoc = { id:"", name:"", type:"蝞∠?蝔?", version:"1.0", department:"", createdDate:"", author:"", retentionYears:16, fileName:"", fileSize:"", fileType:"", fileData:"" };
+  const [newDoc, setNewDoc] = useState({ ...emptyDoc });
+
+  // ?? Bulk-upload state ?????????????????????????????????????????????????????
+  const [bulkItems, setBulkItems] = useState([]);   // array of draft doc objects
+  const [bulkDone,  setBulkDone]  = useState(false);
+
+  // ?? Helpers ???????????????????????????????????????????????????????????????
+  const enriched = documents.map(d => {
+    const expiryDate = new Date(d.createdDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + (d.retentionYears || 16));
+    const expiryStr = expiryDate.toISOString().split("T")[0];
+    return { ...d, expiryStr, daysToExpiry: daysUntil(expiryStr) };
+  });
+
+  function parseDocxMeta(ab) {
+    try {
+      const raw = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(ab));
+      const g = re => (raw.match(re)||[])[1]||"";
+      return {
+        title:    g(/<dc:title[^>]*>([^<]*)<\/dc:title>/),
+        creator:  g(/<dc:creator[^>]*>([^<]*)<\/dc:creator>/) || g(/<cp:lastModifiedBy[^>]*>([^<]*)<\/cp:lastModifiedBy>/),
+        revision: g(/<cp:revision[^>]*>([^<]*)<\/cp:revision>/),
+        created:  g(/<dcterms:created[^>]*>([^<]*)<\/dcterms:created>/),
+        modified: g(/<dcterms:modified[^>]*>([^<]*)<\/dcterms:modified>/),
+      };
+    } catch(e) { return {}; }
+  }
+  function parsePdfMeta(ab) {
+    try {
+      const raw = new TextDecoder("latin1", { fatal: false }).decode(new Uint8Array(ab));
+      const g = re => (raw.match(re)||[])[1]||"";
+      const d = g(/\/CreationDate\s*\(D:(\d{8})/);
+      return { title: g(/\/Title\s*\(([^)]+)\)/), author: g(/\/Author\s*\(([^)]+)\)/),
+               date: d.length===8 ? `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}` : "" };
+    } catch(e) { return {}; }
+  }
+
+  // Process one File object ??return a draft doc object (with fileData)
+  function processFile(file) {
+    return new Promise(resolve => {
+      const ext     = file.name.split(".").pop().toLowerCase();
+      const sizeStr = file.size > 1048576 ? (file.size/1048576).toFixed(1)+" MB" : (file.size/1024).toFixed(0)+" KB";
+      const baseName = file.name.replace(/\.[^.]+$/, "");
+      const draft = {
+        id: "", name: baseName, type: "蝞∠?蝔?", version: "1.0",
+        department: "", createdDate: "", author: "",
+        retentionYears: 16, fileName: file.name, fileSize: sizeStr,
+        fileType: ext.toUpperCase(), fileData: "", _status: "pending"
+      };
+      // Read as ArrayBuffer for metadata, then as DataURL for storage
+      const arrReader = new FileReader();
+      arrReader.onload = ev => {
+        const ab = ev.target.result;
+        // Extract metadata
+        if (["docx","xlsx","pptx"].includes(ext)) {
+          const m = parseDocxMeta(ab);
+          if (m.title)    draft.name        = m.title;
+          if (m.creator)  draft.author      = m.creator;
+          if (m.revision) draft.version     = parseInt(m.revision)>0 ? `1.${parseInt(m.revision)-1}` : "1.0";
+          if (m.created||m.modified) draft.createdDate = (m.created||m.modified).substring(0,10);
+        } else if (ext === "pdf") {
+          const m = parsePdfMeta(ab);
+          if (m.title)  draft.name        = m.title  || draft.name;
+          if (m.author) draft.author      = m.author;
+          if (m.date)   draft.createdDate = m.date;
+        }
+        // Now read as DataURL
+        const b64r = new FileReader();
+        b64r.onload = e2 => { draft.fileData = e2.target.result; resolve(draft); };
+        b64r.readAsDataURL(file);
+      };
+      arrReader.readAsArrayBuffer(file);
+    });
+  }
+
+  // ?? Single upload handler ?????????????????????????????????????????????????
+  async function handleSingleFileUpload(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const draft = await processFile(file);
+    setNewDoc(prev => ({ ...prev, ...draft }));
+  }
+  function handleSingleAdd() {
+    if (!newDoc.id.trim()||!newDoc.name.trim()||!newDoc.department.trim()||!newDoc.createdDate) {
+      setErr("隢‵撖急???憛急?雿??辣蝺刻???蝔晞摰??摰??); return;
+    }
+    setErr("");
+    setDocuments(prev => [...prev, { ...newDoc, retentionYears: parseInt(newDoc.retentionYears)||16 }]);
+    setMode(null); setNewDoc({ ...emptyDoc });
+  }
+
+  // ?? Bulk upload handlers ??????????????????????????????????????????????????
+  async function handleBulkFiles(files) {
+    if (!files || files.length === 0) return;
+    setBulkDone(false);
+    const drafts = await Promise.all(Array.from(files).map(processFile));
+    setBulkItems(prev => [...prev, ...drafts]);
+  }
+  function updateBulkItem(idx, field, value) {
+    setBulkItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  }
+  function removeBulkItem(idx) {
+    setBulkItems(prev => prev.filter((_, i) => i !== idx));
+  }
+  function confirmBulkUpload() {
+    const valid = bulkItems.filter(d => d.id.trim() && d.name.trim() && d.department.trim() && d.createdDate);
+    const invalid = bulkItems.length - valid.length;
+    if (invalid > 0) { setErr(`撠? ${invalid} 蝑??憛怠??湛??嚗楊??蝔晞????`); return; }
+    setErr("");
+    setDocuments(prev => [...prev, ...valid.map(d => ({ ...d, retentionYears: parseInt(d.retentionYears)||16, _status: undefined }))]);
+    setBulkItems([]); setBulkDone(true);
+    setTimeout(() => { setMode(null); setBulkDone(false); }, 1500);
+  }
+  function closeModal() { setMode(null); setNewDoc({ ...emptyDoc }); setBulkItems([]); setErr(""); setBulkDone(false); }
+
+  // ?? Shared styles ?????????????????????????????????????????????????????????
+  const dropZoneStyle = over => ({
+    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+    gap:10, background: over?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",
+    border:`2px dashed ${over?"rgba(124,58,237,0.9)":"rgba(124,58,237,0.4)"}`,
+    borderRadius:14, padding:"28px 20px", cursor:"pointer", transition:"all 0.2s", textAlign:"center"
+  });
+
+  return (
+    <div>
+      <SectionHeader title="?辣?蝞⊥" count={documents.length} color="#a78bfa" />
+      <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+        <StatCard label="蝞∠???"  value={documents.filter(d=>d.type==="蝞∠???").length}  color="#a78bfa" />
+        <StatCard label="蝞∠?蝔?"  value={documents.filter(d=>d.type==="蝞∠?蝔?").length}  color="#60a5fa" />
+        <StatCard label="雿平???? value={documents.filter(d=>d.type==="雿平????).length} color="#34d399" />
+        <StatCard label="蝮賣?隞嗆"  value={documents.length} color="#f97316" />
+      </div>
+
+      {/* Action buttons */}
+      <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginBottom:14 }}>
+        <button onClick={() => { setMode("bulk"); setErr(""); }} style={{ background:"linear-gradient(135deg,#0891b2,#06b6d4)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+          &#128229; ?寥?銝
+        </button>
+        <button onClick={() => { setMode("single"); setErr(""); }} style={{ background:"linear-gradient(135deg,#7c3aed,#4f46e5)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+          嚗??啣??辣
+        </button>
+      </div>
+
+      {/* Document table */}
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+          <thead><tr>{["?辣蝺刻?","?辣?迂","憿","?","?嗅??券?","?嗅??交?","?嗅???,"靽???,"瑼?",""].map(h=>(
+            <th key={h} style={{ textAlign:"left", padding:"10px 12px", color:"#64748b", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap" }}>{h}</th>
+          ))}</tr></thead>
+          <tbody>
+            {enriched.map((doc, i) => (
+              <tr key={doc.id} style={{ background: i%2===0?"rgba(255,255,255,0.02)":"transparent" }}>
+                <td style={{ padding:"10px 12px", color:"#60a5fa", fontWeight:700, fontFamily:"monospace" }}>{doc.id}</td>
+                <td style={{ padding:"10px 12px", color:"#e2e8f0", fontWeight:600 }}>{doc.name}</td>
+                <td style={{ padding:"10px 12px" }}><Badge color={doc.type==="蝞∠???"?"#a78bfa":"#60a5fa"}>{doc.type}</Badge></td>
+                <td style={{ padding:"10px 12px" }}><span style={{ background:"rgba(34,197,94,0.1)", color:"#4ade80", borderRadius:6, padding:"2px 8px", fontWeight:700, fontFamily:"monospace" }}>v{doc.version}</span></td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8" }}>{doc.department}</td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8", whiteSpace:"nowrap" }}>{formatDate(doc.createdDate)}</td>
+                <td style={{ padding:"10px 12px", color:"#94a3b8" }}>{doc.author}</td>
+                <td style={{ padding:"10px 12px", whiteSpace:"nowrap" }}><span style={{ color:doc.daysToExpiry<365?"#f97316":"#64748b", fontFamily:"monospace", fontSize:12 }}>{formatDate(doc.expiryStr)}</span></td>
+                <td style={{ padding:"10px 12px" }}>
+{doc.pdfPath ? (<a href={toAbsoluteAppUrl(doc.pdfPath)} target="_blank" rel="noopener noreferrer" style={{ color:"#fca5a5", fontSize:11, textDecoration:"none", background:"rgba(239,68,68,0.1)", borderRadius:6, padding:"3px 8px", border:"1px solid rgba(239,68,68,0.3)", marginRight:4 }}>&#128196; PDF</a>) : null}
+                  {doc.fileData ? (<a href={doc.fileData} download={doc.fileName||doc.id} style={{ color:"#60a5fa", fontSize:11, textDecoration:"none", background:"rgba(96,165,250,0.1)", borderRadius:6, padding:"3px 8px", border:"1px solid rgba(96,165,250,0.3)" }}>&#8595; {doc.fileType||"銝?"}</a>) : null}
+                  {!doc.pdfPath && !doc.fileData && <span style={{ color:"#374151", fontSize:11 }}>?⊥?獢?/span>}
+                </td>
+                <td style={{ padding:"10px 12px" }}><button onClick={() => setModal(doc)} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, color:"#94a3b8", cursor:"pointer", padding:"4px 10px", fontSize:11 }}>閰單?</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Detail modal */}
+      {modal && (
+        <Modal title={`?辣閰單?嚗?{modal.id}`} onClose={() => setModal(null)}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
+            {[["?辣蝺刻?",modal.id],["?辣?迂",modal.name],["憿",modal.type],["?",`v${modal.version}`],["?嗅??券?",modal.department],["?嗅??交?",formatDate(modal.createdDate)],["?嗅???,modal.author],["靽?撟湧?",`${modal.retentionYears} 撟循],["靽??唳???,formatDate(modal.expiryStr)],["頝??,`${modal.daysToExpiry} 憭奈]].map(([k,v]) => (
+              <div key={k}><div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>{k}</div><div style={{ color:"#e2e8f0", fontWeight:600, fontSize:14 }}>{v}</div></div>
+            ))}
+          </div>
+          {(modal.pdfPath || modal.docxPath) && (
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:10 }}>
+              {modal.pdfPath && (
+                <div style={{ background:"rgba(239,68,68,0.07)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:14 }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+                    <div>
+                      <div style={{ fontSize:12, color:"#fca5a5", fontWeight:700, marginBottom:3 }}>&#128196; PDF 甇??瑼?</div>
+                      <div style={{ fontSize:11, color:"#94a3b8", wordBreak:"break-all" }}>{modal.rawPdfPath || modal.pdfPath}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+<a href={toAbsoluteAppUrl(modal.pdfPath)} target="_blank" rel="noopener noreferrer" style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", color:"#fff", padding:"8px 18px", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>&#128065; ?? PDF</a>
+                    </div>
+                  </div>
+<iframe src={toAbsoluteAppUrl(modal.pdfPath)} title={`${modal.id}-pdf-preview`} style={{ width:"100%", height:320, marginTop:12, border:"1px solid rgba(239,68,68,0.16)", borderRadius:8, background:"#fff" }} />
+                </div>
+              )}
+              {modal.docxPath && (
+                <div style={{ background:"rgba(96,165,250,0.07)", border:"1px solid rgba(96,165,250,0.2)", borderRadius:10, padding:14 }}>
+                  <div style={{ fontSize:12, color:"#93c5fd", fontWeight:700, marginBottom:3 }}>?舐楊頛舀?獢?/div>
+                  <div style={{ fontSize:11, color:"#94a3b8", wordBreak:"break-all" }}>{modal.rawDocxPath || modal.docxPath}</div>
+<a href={toAbsoluteAppUrl(modal.docxPath)} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", marginTop:10, background:"linear-gradient(135deg,#2563eb,#3b82f6)", color:"#fff", padding:"8px 18px", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>???舐楊頛舀?</a>
+                </div>
+              )}
+              {(modal.selectedFile || modal.folderPath) && (
+                <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:12 }}>
+                  <div style={{ fontSize:12, color:"#cbd5e1", fontWeight:700, marginBottom:6 }}>銝餅??桀???閮?/div>
+                  {modal.selectedFile ? <div style={{ fontSize:11, color:"#94a3b8", wordBreak:"break-all" }}>?怠?甇??瑼?嚗modal.selectedFile}</div> : null}
+                  {modal.folderPath ? <div style={{ fontSize:11, color:"#94a3b8", wordBreak:"break-all", marginTop:4 }}>鞈?憭曆?蝵殷?{modal.folderPath}</div> : null}
+                </div>
+              )}
+            </div>
+          )}
+          {modal.fileName && (
+            <div style={{ background:"rgba(96,165,250,0.07)", border:"1px solid rgba(96,165,250,0.2)", borderRadius:10, padding:14, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ fontSize:13, color:"#93c5fd", fontWeight:700 }}>{modal.fileName}</div>
+                <div style={{ fontSize:11, color:"#64748b", marginTop:4 }}>{modal.fileType} ??{modal.fileSize}</div>
+              </div>
+              {modal.fileData && <a href={modal.fileData} download={modal.fileName} style={{ background:"linear-gradient(135deg,#7c3aed,#4f46e5)", color:"#fff", padding:"8px 18px", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>&#8595; 銝?瑼?</a>}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* ?? SINGLE ADD MODAL ??????????????????????????????????????????????????? */}
+      {mode === "single" && (
+        <Modal title="?啣??辣" onClose={closeModal}>
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:6, fontWeight:600 }}>銝?辣嚗?芸?霈??Word / PDF Metadata嚗?/div>
+              <label style={{ display:"flex", alignItems:"center", gap:12, background:"rgba(255,255,255,0.03)", border:"2px dashed rgba(124,58,237,0.4)", borderRadius:12, padding:"14px 18px", cursor:"pointer" }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(124,58,237,0.8)"}
+                onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(124,58,237,0.4)"}>
+                <input type="file" accept=".pdf,.docx,.xlsx,.pptx,.doc,.txt" onChange={handleSingleFileUpload} style={{ display:"none" }} />
+                <span style={{ fontSize:28 }}>&#128196;</span>
+                <div>
+                  {newDoc.fileName
+                    ? <><div style={{ color:"#a78bfa", fontWeight:700 }}>{newDoc.fileName}</div><div style={{ color:"#64748b", fontSize:12 }}>{newDoc.fileType} ??{newDoc.fileSize}</div></>
+                    : <><div style={{ color:"#94a3b8", fontWeight:600 }}>暺??豢??桐?瑼?</div><div style={{ color:"#475569", fontSize:12, marginTop:3 }}>PDF?OCX?LSX??/div></>
+                  }
+                </div>
+              </label>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {[["?辣蝺刻? *","id","text"],["? *","version","text"],["?嗅??券? *","department","text"],["?嗅???,"author","text"]].map(([label,field,type]) => (
+                <div key={field}>
+                  <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div>
+                  <input type={type} value={newDoc[field]} onChange={e=>setNewDoc({...newDoc,[field]:e.target.value})} style={inputStyle} placeholder={field==="id"?"MP-XX":""} />
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>?辣?迂 *</div>
+              <input type="text" value={newDoc.name} onChange={e=>setNewDoc({...newDoc,name:e.target.value})} style={inputStyle} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+              <div>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>?嗅??交? *</div>
+                <input type="date" value={newDoc.createdDate} onChange={e=>setNewDoc({...newDoc,createdDate:e.target.value})} style={inputStyle} />
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>靽?撟湧?嚗僑嚗?/div>
+                <input type="number" value={newDoc.retentionYears} onChange={e=>setNewDoc({...newDoc,retentionYears:e.target.value})} style={inputStyle} min="1" max="99" />
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>憿</div>
+                <select value={newDoc.type} onChange={e=>setNewDoc({...newDoc,type:e.target.value})} style={inputStyle}>
+                  <option>蝞∠???</option><option>蝞∠?蝔?</option><option>雿平????/option><option>銵典</option>
+                </select>
+              </div>
+            </div>
+            {err && <div style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:"#fca5a5", fontSize:13 }}>{err}</div>}
+            <button onClick={handleSingleAdd} style={{ background:"linear-gradient(135deg,#7c3aed,#4f46e5)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"13px 24px", fontSize:15, fontWeight:700 }}>嚗?蝣箄??啣??辣</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ?? BULK UPLOAD MODAL ?????????????????????????????????????????????????? */}
+      {mode === "bulk" && (
+        <Modal title={`?寥?銝?辣嚗歇??${bulkItems.length} 蝑?`} onClose={closeModal}>
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+            {/* Drop zone */}
+            <div
+              style={dropZoneStyle(dragOver)}
+              onDragOver={e=>{ e.preventDefault(); setDragOver(true); }}
+              onDragLeave={()=>setDragOver(false)}
+              onDrop={e=>{ e.preventDefault(); setDragOver(false); handleBulkFiles(e.dataTransfer.files); }}
+            >
+              <span style={{ fontSize:40 }}>&#128229;</span>
+              <div style={{ color:"#a78bfa", fontWeight:700, fontSize:15 }}>?憭?獢甇方?</div>
+              <div style={{ color:"#64748b", fontSize:12 }}>?舀 PDF?OCX?LSX?PTX?XT嚗?圾??Metadata</div>
+              <label style={{ marginTop:6, background:"rgba(124,58,237,0.15)", border:"1px solid rgba(124,58,237,0.5)", borderRadius:8, color:"#a78bfa", cursor:"pointer", padding:"8px 20px", fontSize:13, fontWeight:700 }}>
+                <input type="file" multiple accept=".pdf,.docx,.xlsx,.pptx,.doc,.txt" onChange={e=>handleBulkFiles(e.target.files)} style={{ display:"none" }} />
+                ?????獢?
+              </label>
+            </div>
+
+            {/* Item list */}
+            {bulkItems.length > 0 && (
+              <div style={{ display:"flex", flexDirection:"column", gap:10, maxHeight:420, overflowY:"auto", paddingRight:4 }}>
+                {/* Header row */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 0.8fr 0.7fr 0.7fr 28px", gap:6, fontSize:11, color:"#64748b", fontWeight:600, padding:"0 2px" }}>
+                  <span>?辣蝺刻? *</span><span>?迂 *</span><span>?券? *</span><span>?交? *</span><span>? / 憿</span><span></span>
+                </div>
+                {bulkItems.map((item, idx) => (
+                  <div key={idx} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"10px 12px" }}>
+                    {/* File info row */}
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ fontSize:16 }}>&#128196;</span>
+                        <span style={{ fontSize:12, color:"#a78bfa", fontWeight:600 }}>{item.fileName}</span>
+                        <span style={{ fontSize:11, color:"#475569" }}>{item.fileSize} ??{item.fileType}</span>
+                      </div>
+                      <button onClick={()=>removeBulkItem(idx)} style={{ background:"rgba(239,68,68,0.15)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:6, color:"#fca5a5", cursor:"pointer", padding:"2px 8px", fontSize:12 }}>??/button>
+                    </div>
+                    {/* Editable fields */}
+                    <div style={{ display:"grid", gridTemplateColumns:"0.8fr 1.5fr 0.9fr 0.85fr 0.6fr 0.6fr", gap:6 }}>
+                      <input value={item.id} onChange={e=>updateBulkItem(idx,"id",e.target.value)} placeholder="蝺刻? *" style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <input value={item.name} onChange={e=>updateBulkItem(idx,"name",e.target.value)} placeholder="?迂 *" style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <input value={item.department} onChange={e=>updateBulkItem(idx,"department",e.target.value)} placeholder="?券? *" style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <input type="date" value={item.createdDate} onChange={e=>updateBulkItem(idx,"createdDate",e.target.value)} style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <input value={item.version} onChange={e=>updateBulkItem(idx,"version",e.target.value)} placeholder="?" style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <select value={item.type} onChange={e=>updateBulkItem(idx,"type",e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 4px" }}>
+                        <option>蝞∠???</option><option>蝞∠?蝔?</option><option>雿平????/option><option>銵典</option>
+                      </select>
+                    </div>
+                    {/* Author & retention (collapsed row) */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginTop:6 }}>
+                      <input value={item.author} onChange={e=>updateBulkItem(idx,"author",e.target.value)} placeholder="?嗅??? style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} />
+                      <input type="number" value={item.retentionYears} onChange={e=>updateBulkItem(idx,"retentionYears",e.target.value)} placeholder="靽?撟湧?" style={{ ...inputStyle, fontSize:12, padding:"6px 8px" }} min="1" max="99" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {bulkItems.length === 0 && (
+              <div style={{ textAlign:"center", color:"#475569", fontSize:13, padding:"10px 0" }}>撠?豢?隞颱?瑼?</div>
+            )}
+
+            {err && <div style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:8, padding:"10px 14px", color:"#fca5a5", fontSize:13 }}>{err}</div>}
+            {bulkDone && <div style={{ background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:8, padding:"10px 14px", color:"#86efac", fontSize:13 }}>??撌脫????{bulkItems.length} 蝑?隞塚?</div>}
+
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={closeModal} style={{ flex:1, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"#94a3b8", cursor:"pointer", padding:"12px 0", fontSize:14, fontWeight:600 }}>??</button>
+              <button onClick={confirmBulkUpload} disabled={bulkItems.length===0} style={{ flex:2, background: bulkItems.length===0?"rgba(124,58,237,0.3)":"linear-gradient(135deg,#0891b2,#06b6d4)", border:"none", borderRadius:10, color:"#fff", cursor: bulkItems.length===0?"not-allowed":"pointer", padding:"12px 0", fontSize:15, fontWeight:700 }}>
+                &#128229; 蝣箄??臬?券 {bulkItems.length} 蝑?隞?
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ??? TRAINING TAB ?????????????????????????????????????????????????????????????
+
+
+function EquipmentTab({ equipment, setEquipment }) {
+  const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("ALL");
+  const [modalType, setModalType] = useState("");
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [equipmentDraft, setEquipmentDraft] = useState({ id:"", name:"", location:"", owner:"", intervalDays:"", vendor:"", model:"", nextItems:"", note:"" });
+  const [maintenanceDraft, setMaintenanceDraft] = useState({ date:"", operator:"", remark:"", items:"" });
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+
+  const enriched = equipment.map(eq => {
+    const nextDate = getEquipmentNextMaintenanceDate(eq);
+    const days = daysUntil(nextDate);
+    return { ...eq, nextDate, days };
+  }).sort((a,b) => a.days-b.days);
+  const locationOptions = Array.from(new Set(equipment.map(item => item.location).filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  const filtered = enriched.filter(item => {
+    const matchesLocation = locationFilter === "ALL" || item.location === locationFilter;
+    const keyword = search.trim().toLowerCase();
+    const matchesSearch = !keyword || [item.id, item.name, item.location, item.owner, item.vendor, item.model].some(value => String(value || "").toLowerCase().includes(keyword));
+    return matchesLocation && matchesSearch;
+  });
+  const historyCount = equipment.reduce((sum, item) => sum + (item.maintenanceHistory || []).length, 0);
+
+  function resetEquipmentDraft(record = null) {
+    setEquipmentDraft(record ? {
+      id: record.id || "",
+      name: record.name || "",
+      location: record.location || "",
+      owner: record.owner || "",
+      intervalDays: String(record.intervalDays || ""),
+      vendor: record.vendor || "",
+      model: record.model || "",
+      nextItems: (record.nextItems || []).join("\n"),
+      note: record.note || "",
+    } : { id:"", name:"", location:"", owner:"", intervalDays:"", vendor:"", model:"", nextItems:"", note:"" });
+  }
+
+  function resetMaintenanceDraft(record) {
+    setMaintenanceDraft({
+      date: new Date().toISOString().split("T")[0],
+      operator: "",
+      remark: "",
+      items: (record?.nextItems || []).join("\n"),
+    });
+  }
+
+  async function saveEquipmentRecord(record, successText) {
+    setBusy("save-equipment");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/equipment-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record }),
+      });
+      setEquipment(payload.items || []);
+      setMessage(successText);
+    } catch (err) {
+      setMessage("靽?閮剖?鞈?憭望?嚗? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveEquipmentInfo() {
+    if (!equipmentDraft.id.trim() || !equipmentDraft.name.trim()) {
+      setMessage("隢?憛怠神閮剖?蝺刻???蝔晞?);
+      return;
+    }
+    const previous = equipment.find(item => item.id === equipmentDraft.id) || { maintenanceHistory: [] };
+    await saveEquipmentRecord(
+      {
+        ...previous,
+        ...equipmentDraft,
+        intervalDays: Number(equipmentDraft.intervalDays || 0),
+        nextMaintenance: previous.lastMaintenance
+          ? addDays(previous.lastMaintenance, Number(equipmentDraft.intervalDays || 0))
+          : "",
+        nextItems: equipmentDraft.nextItems.split(/\r?\n/).map(item => item.trim()).filter(Boolean),
+        maintenanceHistory: previous.maintenanceHistory || [],
+      },
+      previous.id ? "撌脫?啗身???? : "撌脫憓身??
+    );
+    setModalType("");
+    setSelectedEquipment(null);
+    resetEquipmentDraft();
+  }
+
+  async function saveMaintenanceRecord() {
+    if (!selectedEquipment) return;
+    if (!maintenanceDraft.date) {
+      setMessage("隢?憛怠神靽??交???);
+      return;
+    }
+    const historyEntry = {
+      id: `${selectedEquipment.id}-M${Date.now()}`,
+      date: maintenanceDraft.date,
+      operator: maintenanceDraft.operator,
+      remark: maintenanceDraft.remark,
+      items: maintenanceDraft.items.split(/\r?\n/).map(item => item.trim()).filter(Boolean),
+    };
+    await saveEquipmentRecord(
+      {
+        ...selectedEquipment,
+        lastMaintenance: maintenanceDraft.date,
+        nextMaintenance: addDays(maintenanceDraft.date, Number(selectedEquipment.intervalDays || 0)),
+        status: "甇?虜",
+        maintenanceHistory: [historyEntry, ...(selectedEquipment.maintenanceHistory || [])],
+      },
+      "撌脖?摮身??擗???
+    );
+    setModalType("");
+    setSelectedEquipment(null);
+  }
+
+  async function deleteEquipment(recordId) {
+    if (!window.confirm("蝣箏?閬?日閮剖???")) return;
+    setBusy("delete-equipment");
+    setMessage("");
+    try {
+      const encodedId = encodeURIComponent(recordId);
+      const payload = await apiDeleteWithFallback(`/api/equipment-records/${encodedId}`, `/api/equipment-records/${encodedId}/delete`);
+      setEquipment(payload.items || []);
+      setMessage("撌脣?方身????);
+    } catch (err) {
+      setMessage("?芷閮剖?憭望?嚗? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <div>
+      <SectionHeader title="閮剖?靽?餈質馱" count={equipment.length} color="#fb923c" />
+    <ModuleStatusBanner
+        title="?桀??嚗???迤撘?皞???
+        tone="system"
+        message="???歇?湔霈????8 閮剜閮剖?蝞∠?蝔??身??閬質”??擗???雿憭憓?鋆??擗摰嫣???摮蝟餌絞嚗靘踹?蝥蕭頩扎?
+      />
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginBottom: 16 }}>
+        <button onClick={() => { resetEquipmentDraft(); setSelectedEquipment(null); setModalType("equipment"); }} style={{ background:"linear-gradient(135deg,#ea580c,#f97316)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 16px", fontSize:13, fontWeight:700 }}>?啣?閮剖?</button>
+        {message && <div style={{ fontSize:12, color:"#fed7aa" }}>{message}</div>}
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="?暹?靽?" value={enriched.filter(e=>e.days<0).length} color="#ef4444" />
+        <StatCard label="?祆??唳?" value={enriched.filter(e=>e.days>=0&&e.days<=30).length} color="#f97316" />
+        <StatCard label="甇?虜" value={enriched.filter(e=>e.days>30).length} color="#22c55e" />
+        <StatCard label="靽?蝝???? value={historyCount} color="#60a5fa" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>雿蔭</div>
+          <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} style={inputStyle}>
+            <option value="ALL">?券雿蔭</option>
+            {locationOptions.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>??</div>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="?舀?撠身?楊??蝔晞?蝵柴?鞎砌犖" style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {filtered.map(eq => (
+          <div key={eq.id} style={{ background: urgencyBg(eq.days), border: `1px solid ${urgencyColor(eq.days)}33`, borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 10 }}>
+              <div style={{ flex: 1, minWidth: 200 }}><div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 14 }}>{eq.name}</div><div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{eq.id} 繚 {eq.location} 繚 瘥?{eq.intervalDays} 憭拐?擗?甈﹃eq.owner ? ` 繚 鞎痊 ${eq.owner}` : ""}</div></div>
+              <div style={{ textAlign: "right", minWidth: 120 }}><div style={{ fontSize: 12, color: "#64748b" }}>銝活靽?</div><div style={{ fontWeight: 700, color: "#e2e8f0" }}>{formatDate(eq.nextDate)}</div></div>
+              <Badge color={urgencyColor(eq.days)}>{urgencyLabel(eq.days)}</Badge>
+              <button onClick={() => { setSelectedEquipment(eq); resetMaintenanceDraft(eq); setModalType("maintenance"); }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#94a3b8", cursor: "pointer", padding: "6px 14px", fontSize: 12 }}>閮?靽?</button>
+              <button onClick={() => { setSelectedEquipment(eq); resetEquipmentDraft(eq); setModalType("equipment"); }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#cbd5e1", cursor: "pointer", padding: "6px 14px", fontSize: 12 }}>靽格閮剖?</button>
+              {eq.sourceSystem !== "burlan_equipment_records" && (
+                <button onClick={() => deleteEquipment(eq.id)} disabled={busy !== ""} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"6px 14px", fontSize:12, opacity:busy ? 0.7 : 1 }}>?芷</button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>靽??嚗?/span>
+              {(eq.nextItems || []).map((item,i) => (<span key={i} style={{ fontSize: 11, background: "rgba(251,146,60,0.1)", color: "#fb923c", borderRadius: 6, padding: "2px 8px", border: "1px solid rgba(251,146,60,0.2)" }}>{item}</span>))}
+            </div>
+            {(eq.maintenanceHistory || []).length > 0 && <div style={{ marginTop:10, fontSize:12, color:"#cbd5e1" }}>?餈?擗?{formatDate(eq.maintenanceHistory[0]?.date)}{eq.maintenanceHistory[0]?.operator ? ` 繚 ${eq.maintenanceHistory[0].operator}` : ""}{eq.maintenanceHistory[0]?.remark ? ` 繚 ${eq.maintenanceHistory[0].remark}` : ""}</div>}
+          </div>
+        ))}
+        {filtered.length === 0 && <div style={{ textAlign:"center", padding:"24px 18px", color:"#64748b", background:"rgba(255,255,255,0.03)", borderRadius:12 }}>?桀?瘝?蝚血?璇辣?身??/div>}
+      </div>
+      {modalType === "maintenance" && selectedEquipment && (
+        <Modal title={`閮?靽?摰?嚗?{selectedEquipment.name}`} onClose={() => { setModalType(""); setSelectedEquipment(null); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>靽?摰??交?</div>
+              <input type="date" value={maintenanceDraft.date} onChange={e => setMaintenanceDraft({ ...maintenanceDraft, date:e.target.value })} style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?瑁?鈭箏</div>
+              <input value={maintenanceDraft.operator} onChange={e => setMaintenanceDraft({ ...maintenanceDraft, operator:e.target.value })} style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?祆活靽??嚗?銵???</div>
+              <textarea value={maintenanceDraft.items} onChange={e => setMaintenanceDraft({ ...maintenanceDraft, items:e.target.value })} style={{ ...inputStyle, minHeight:88, resize:"vertical" }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?酉</div>
+              <textarea value={maintenanceDraft.remark} onChange={e => setMaintenanceDraft({ ...maintenanceDraft, remark:e.target.value })} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} />
+            </div>
+            <div style={{ background: "rgba(251,146,60,0.1)", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#fb923c", fontWeight: 600, marginBottom: 8 }}>?湔敺?甈∩?擗</div>
+              <div style={{ color: "#fed7aa", fontSize: 16, fontWeight: 700 }}>{formatDate(addDays(maintenanceDraft.date, Number(selectedEquipment.intervalDays || 0)))}</div>
+            </div>
+            <button onClick={saveMaintenanceRecord} disabled={busy !== ""} style={{ background: "linear-gradient(135deg, #ea580c, #f97316)", border: "none", borderRadius: 10, color: "#fff", cursor: "pointer", padding: "12px 24px", fontSize: 15, fontWeight: 700, opacity:busy ? 0.7 : 1 }}>{busy === "save-equipment" ? "靽?銝?.." : "蝣箄?靽?摰?"}</button>
+          </div>
+        </Modal>
+      )}
+      {modalType === "equipment" && (
+        <Modal title={selectedEquipment ? `靽格閮剖?嚗?{selectedEquipment.name}` : "?啣?閮剖?"} onClose={() => { setModalType(""); setSelectedEquipment(null); }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {[["閮剖?蝺刻?","id","text"],["閮剖??迂","name","text"],["雿蔭","location","text"],["鞎痊鈭?,"owner","text"],["靽??望?嚗予嚗?,"intervalDays","number"],["撱?","vendor","text"],["??","model","text"]].map(([label,field,type]) => (
+              <div key={field}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div>
+                <input type={type} value={equipmentDraft[field]} onChange={e => setEquipmentDraft({ ...equipmentDraft, [field]: e.target.value })} style={inputStyle} disabled={selectedEquipment && field === "id"} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>靽??嚗?銵???</div>
+              <textarea value={equipmentDraft.nextItems} onChange={e => setEquipmentDraft({ ...equipmentDraft, nextItems:e.target.value })} style={{ ...inputStyle, minHeight:88, resize:"vertical" }} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>?酉</div>
+              <textarea value={equipmentDraft.note} onChange={e => setEquipmentDraft({ ...equipmentDraft, note:e.target.value })} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} />
+            </div>
+            <button onClick={saveEquipmentInfo} disabled={busy !== ""} style={{ background:"linear-gradient(135deg,#ea580c,#f97316)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy ? 0.7 : 1 }}>{busy === "save-equipment" ? "靽?銝?.." : "蝣箄?靽?"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ??? SUPPLIER TAB (MP-10) ????????????????????????????????????????????????????
+function SupplierTab({ suppliers, setSuppliers }) {
+  const [modalType, setModalType] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [supplierDraft, setSupplierDraft] = useState({ id:"", name:"", category:"", contact:"", lastEvalDate:"", evalScore:"90", evalIntervalDays:"365", note:"" });
+  const [evalDraft, setEvalDraft] = useState({ date:"", score:"90", operator:"", remark:"", issues:"" });
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const enriched = suppliers.map(s => {
+    const nextEvalDate = addDays(s.lastEvalDate, s.evalIntervalDays);
+    const days = daysUntil(nextEvalDate);
+    return { ...s, nextEvalDate, days };
+  }).sort((a,b) => a.days-b.days);
+  const categoryOptions = Array.from(new Set(suppliers.map(item => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  const filtered = enriched.filter(item => {
+    const matchesCategory = categoryFilter === "ALL" || item.category === categoryFilter;
+    const keyword = search.trim().toLowerCase();
+    const matchesSearch = !keyword || [item.id, item.name, item.category, item.contact].some(value => String(value || "").toLowerCase().includes(keyword));
+    return matchesCategory && matchesSearch;
+  });
+  const historyCount = suppliers.reduce((sum, item) => sum + (item.evalHistory || []).length, 0);
+
+  function evaluationResult(score) {
+    const numeric = parseInt(score, 10) || 0;
+    return numeric >= 90 ? "?芾" : numeric >= 80 ? "?" : numeric >= 70 ? "璇辣?" : "銝???;
+  }
+
+  function resetSupplierDraft(record = null) {
+    setSupplierDraft(record ? {
+      id: record.id || "",
+      name: record.name || "",
+      category: record.category || "",
+      contact: record.contact || "",
+      lastEvalDate: record.lastEvalDate || "",
+      evalScore: String(getSupplierScore(record) || 90),
+      evalIntervalDays: String(record.evalIntervalDays || 365),
+      note: record.note || "",
+    } : { id:"", name:"", category:"", contact:"", lastEvalDate:"", evalScore:"90", evalIntervalDays:"365", note:"" });
+  }
+
+  function resetEvalDraft(record) {
+    setEvalDraft({
+      date: new Date().toISOString().split("T")[0],
+      score: String(getSupplierScore(record) || 90),
+      operator: "",
+      remark: "",
+      issues: (record?.issues || []).join("\n"),
+    });
+  }
+
+  async function saveSupplierRecord(record, successText) {
+    setBusy("save-supplier");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/supplier-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record }),
+      });
+      setSuppliers(payload.items || []);
+      setMessage(successText);
+    } catch (err) {
+      setMessage("靽?靘????仃??" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveSupplierInfo() {
+    if (!supplierDraft.id.trim() || !supplierDraft.name.trim()) {
+      setMessage("隢?憛怠神靘??楊???迂??);
+      return;
+    }
+    const score = parseInt(supplierDraft.evalScore, 10) || 0;
+    const previous = suppliers.find(item => item.id === supplierDraft.id) || { evalHistory: [], issues: [] };
+    await saveSupplierRecord(
+      {
+        ...previous,
+        ...supplierDraft,
+        lastEvalDate: supplierDraft.lastEvalDate || previous.lastEvalDate || "",
+        evalScore: score,
+        evalResult: evaluationResult(score),
+        evalIntervalDays: Number(supplierDraft.evalIntervalDays || 365),
+        evalHistory: previous.evalHistory || [],
+      },
+      previous.id ? "撌脫?唬???鞈??? : "撌脫憓?????
+    );
+    setModalType("");
+    setSelectedSupplier(null);
+    resetSupplierDraft();
+  }
+
+  async function saveEvaluation() {
+    if (!selectedSupplier) return;
+    if (!evalDraft.date) {
+      setMessage("隢?憛怠神閰??交???);
+      return;
+    }
+    const score = parseInt(evalDraft.score, 10) || 0;
+    const issues = evalDraft.issues.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+    const historyEntry = {
+      id: `${selectedSupplier.id}-E${Date.now()}`,
+      date: evalDraft.date,
+      score,
+      result: evaluationResult(score),
+      operator: evalDraft.operator,
+      remark: evalDraft.remark,
+      issues,
+    };
+    await saveSupplierRecord(
+      {
+        ...selectedSupplier,
+        lastEvalDate: evalDraft.date,
+        evalScore: score,
+        evalResult: evaluationResult(score),
+        issues,
+        evalHistory: [historyEntry, ...(selectedSupplier.evalHistory || [])],
+      },
+      "撌脖?摮???閰???
+    );
+    setModalType("");
+    setSelectedSupplier(null);
+  }
+
+  async function deleteSupplier(recordId) {
+    if (!window.confirm("蝣箏?閬?日振靘???嚗?)) return;
+    setBusy("delete-supplier");
+    setMessage("");
+    try {
+      const encodedId = encodeURIComponent(recordId);
+      const payload = await apiDeleteWithFallback(`/api/supplier-records/${encodedId}`, `/api/supplier-records/${encodedId}/delete`);
+      setSuppliers(payload.items || []);
+      setMessage("撌脣?支???鞈???);
+    } catch (err) {
+      setMessage("?芷靘??仃??" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const scoreColor = s => s>=90?"#22c55e":s>=80?"#60a5fa":s>=70?"#eab308":"#ef4444";
+  return (
+    <div>
+      <SectionHeader title="靘????恣??MP-12嚗? count={suppliers.length} color="#06b6d4" />
+   <ModuleStatusBanner
+        title="?桀??嚗???迤撘?皞???
+        tone="system"
+        message="???歇?湔霈????僑摨虫???皛踵?摨行??株? 12.2 靘????”嚗??血??啣????餌?閰??批捆銋?靽??啁頂蝯晞?
+      />
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginBottom: 16 }}>
+        <button onClick={() => { resetSupplierDraft(); setSelectedSupplier(null); setModalType("supplier"); }} style={{ background:"linear-gradient(135deg,#0891b2,#06b6d4)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 16px", fontSize:13, fontWeight:700 }}>?啣?靘???/button>
+        {message && <div style={{ fontSize:12, color:"#bae6fd" }}>{message}</div>}
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="靘??蜇?? value={suppliers.length} color="#06b6d4" />
+        <StatCard label="?芾" value={enriched.filter(s=>s.evalResult==="?芾").length} color="#22c55e" />
+        <StatCard label="璇辣?" value={enriched.filter(s=>s.evalResult==="璇辣?").length} color="#eab308" />
+        <StatCard label="閰??暹?" value={enriched.filter(s=>s.days<0).length} color="#ef4444" />
+        <StatCard label="閰?甇瑞?蝑" value={historyCount} color="#60a5fa" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>憿</div>
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={inputStyle}>
+            <option value="ALL">?券憿</option>
+            {categoryOptions.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>??</div>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="?舀?撠???蝺刻???蝔晞??乓蝯∩犖" style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {filtered.map(s => (
+          <div key={s.id} style={{ background: urgencyBg(s.days), border: `1px solid ${urgencyColor(s.days)}33`, borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: s.issues.length>0?10:0 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 14 }}>{s.name}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{s.id} 繚 {s.category} 繚 ?舐窗鈭綽?{s.contact || "?芸‵"}</div>
+              </div>
+              <div style={{ textAlign: "right", minWidth: 90 }}>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: scoreColor(getSupplierScore(s)), fontFamily: "monospace" }}>{getSupplierScore(s)}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>??/div>
+              </div>
+              <Badge color={s.evalResult==="?芾"?"#22c55e":s.evalResult==="?"?"#60a5fa":s.evalResult==="璇辣?"?"#eab308":"#ef4444"}>{s.evalResult}</Badge>
+              <div style={{ textAlign: "right", minWidth: 120 }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>銝活閰?</div>
+                <div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 13 }}>{formatDate(s.nextEvalDate)}</div>
+              </div>
+              <Badge color={urgencyColor(s.days)}>{urgencyLabel(s.days)}</Badge>
+              <button onClick={() => { setSelectedSupplier(s); resetEvalDraft(s); setModalType("evaluation"); }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#94a3b8", cursor: "pointer", padding: "6px 14px", fontSize: 12 }}>?湔閰?</button>
+              <button onClick={() => { setSelectedSupplier(s); resetSupplierDraft(s); setModalType("supplier"); }} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#cbd5e1", cursor: "pointer", padding: "6px 14px", fontSize: 12 }}>靽格鞈?</button>
+              {s.sourceSystem !== "burlan_supplier_records" && (
+                <button onClick={() => deleteSupplier(s.id)} disabled={busy !== ""} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"6px 14px", fontSize:12, opacity:busy ? 0.7 : 1 }}>?芷</button>
+              )}
+            </div>
+            {s.issues.length>0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600 }}>???嚗?/span>
+                {s.issues.map((issue,i) => (<span key={i} style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#f87171", borderRadius: 6, padding: "2px 8px", border: "1px solid rgba(239,68,68,0.2)" }}>{issue}</span>))}
+              </div>
+            )}
+            {(s.evalHistory || []).length > 0 && <div style={{ marginTop:10, fontSize:12, color:"#cbd5e1" }}>?餈???{formatDate(s.evalHistory[0]?.date)}{s.evalHistory[0]?.operator ? ` 繚 ${s.evalHistory[0].operator}` : ""}{s.evalHistory[0]?.remark ? ` 繚 ${s.evalHistory[0].remark}` : ""}</div>}
+          </div>
+        ))}
+        {filtered.length === 0 && <div style={{ textAlign:"center", padding:"24px 18px", color:"#64748b", background:"rgba(255,255,255,0.03)", borderRadius:12 }}>?桀?瘝?蝚血?璇辣??????/div>}
+      </div>
+      {modalType === "supplier" && (
+        <Modal title={selectedSupplier ? `靽格靘???${selectedSupplier.name}` : "?啣?靘???} onClose={() => { setModalType(""); setSelectedSupplier(null); }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            {[["靘??楊??,"id","text"],["靘???蝔?,"name","text"],["憿","category","text"],["?舐窗鈭?,"contact","text"],["?餈????,"lastEvalDate","date"],["閰??","evalScore","number"],["閰??望?嚗予嚗?,"evalIntervalDays","number"]].map(([label, field, type]) => (
+              <div key={field}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:6 }}>{label}</div>
+                <input type={type} value={supplierDraft[field]} onChange={e => setSupplierDraft({ ...supplierDraft, [field]: e.target.value })} style={inputStyle} disabled={selectedSupplier && field === "id"} />
+              </div>
+            ))}
+            <div style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 8, padding: 12, color: "#bae6fd", fontSize: 12 }}>
+              ?桀?閰?蝯?嚗evaluationResult(supplierDraft.evalScore)}
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:6 }}>?酉</div>
+              <textarea value={supplierDraft.note} onChange={e => setSupplierDraft({ ...supplierDraft, note:e.target.value })} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} />
+            </div>
+            <button onClick={saveSupplierInfo} disabled={busy !== ""} style={{ background:"linear-gradient(135deg,#0891b2,#06b6d4)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, opacity:busy ? 0.7 : 1 }}>{busy === "save-supplier" ? "靽?銝?.." : "蝣箄?靽?"}</button>
+          </div>
+        </Modal>
+      )}
+      {modalType === "evaluation" && selectedSupplier && (
+        <Modal title={`?湔閰?嚗?{selectedSupplier.name}`} onClose={() => { setModalType(""); setSelectedSupplier(null); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>閰??交?</div><input type="date" value={evalDraft.date} onChange={e=>setEvalDraft({...evalDraft,date:e.target.value})} style={inputStyle} /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>閰?蝮賢? (0-100)</div><input type="number" min="0" max="100" value={evalDraft.score} onChange={e=>setEvalDraft({...evalDraft,score:e.target.value})} style={inputStyle} /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>閰?鈭箏</div><input value={evalDraft.operator} onChange={e=>setEvalDraft({...evalDraft,operator:e.target.value})} style={inputStyle} /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>???嚗?銵???</div><textarea value={evalDraft.issues} onChange={e=>setEvalDraft({...evalDraft,issues:e.target.value})} style={{ ...inputStyle, minHeight:88, resize:"vertical" }} /></div>
+            <div><div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>?酉</div><textarea value={evalDraft.remark} onChange={e=>setEvalDraft({...evalDraft,remark:e.target.value})} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} /></div>
+            <div style={{ background: "rgba(6,182,212,0.1)", borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: "#22d3ee", fontWeight: 600 }}>閰?蝑?嚗evaluationResult(evalDraft.score)}</div><div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>90+?芾 / 80-89? / 70-79璇辣? / 69隞乩?銝???/div></div>
+            <button onClick={saveEvaluation} disabled={busy !== ""} style={{ background: "linear-gradient(135deg, #0891b2, #06b6d4)", border: "none", borderRadius: 10, color: "#fff", cursor: "pointer", padding: "12px 24px", fontSize: 15, fontWeight: 700, opacity:busy ? 0.7 : 1 }}>{busy === "save-supplier" ? "靽?銝?.." : "蝣箄??湔閰?"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ??? NON-CONFORMANCE TAB (MP-15) ?????????????????????????????????????????????
+
+
+function SvgBarChart({ data, width = 420, height = 150, color = "#3b82f6" }) {
+  if (!data || data.length === 0) return <div style={{ color:"#475569", fontSize:12, textAlign:"center", padding:16 }}>撠鞈?</div>;
+  const max = Math.max(...data.map(d => d.value), 1);
+  const padL = 8, padR = 8, padB = 22, padT = 16;
+  const innerW = width - padL - padR;
+  const innerH = height - padT - padB;
+  const slotW = innerW / data.length;
+  const barW = Math.max(Math.min(slotW - 6, 36), 6);
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow:"visible", display:"block" }}>
+      {[0, 0.5, 1].map(pct => {
+        const y = padT + innerH - pct * innerH;
+        return <line key={pct} x1={padL} y1={y} x2={padL + innerW} y2={y} stroke="rgba(255,255,255,0.05)" />;
+      })}
+      {data.map((d, i) => {
+        const barH = Math.max(Math.round((d.value / max) * innerH), d.value > 0 ? 2 : 0);
+        const x = padL + i * slotW + (slotW - barW) / 2;
+        const y = padT + innerH - barH;
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={barW} height={barH} rx={3} fill={color} opacity={0.85} />
+            <text x={x + barW / 2} y={height - 4} textAnchor="middle" fill="#475569" fontSize={9}>{d.label}</text>
+            {d.value > 0 && <text x={x + barW / 2} y={y - 3} textAnchor="middle" fill="#cbd5e1" fontSize={9}>{d.value}</text>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgLineChart({ data, width = 420, height = 140, color = "#22c55e", domainMin, domainMax }) {
+  if (!data || data.length < 2) return <div style={{ color:"#475569", fontSize:12, textAlign:"center", padding:16 }}>? 2 蝑誑銝???/div>;
+  const vals = data.map(d => d.value);
+  const rawMin = domainMin !== undefined ? domainMin : Math.min(...vals);
+  const rawMax = domainMax !== undefined ? domainMax : Math.max(...vals);
+  const range = rawMax - rawMin || 1;
+  const padL = 36, padR = 12, padT = 16, padB = 24;
+  const w = width - padL - padR;
+  const h = height - padT - padB;
+  const xStep = w / (data.length - 1);
+  const pts = data.map((d, i) => ({
+    x: padL + i * xStep,
+    y: padT + h - ((d.value - rawMin) / range) * h,
+    label: d.label,
+    value: d.value,
+  }));
+  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaPath = linePath + ` L ${pts[pts.length - 1].x.toFixed(1)} ${(padT + h).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(padT + h).toFixed(1)} Z`;
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow:"visible", display:"block" }}>
+      {[0, 0.5, 1].map(pct => {
+        const y = padT + h - pct * h;
+        const val = rawMin + pct * range;
+        return (
+          <g key={pct}>
+            <line x1={padL} y1={y} x2={padL + w} y2={y} stroke="rgba(255,255,255,0.05)" />
+            <text x={padL - 4} y={y + 4} textAnchor="end" fill="#475569" fontSize={8}>{val.toFixed(1)}</text>
+          </g>
+        );
+      })}
+      <path d={areaPath} fill={color} opacity={0.08} />
+      <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={3} fill={color} />
+          <text x={p.x} y={height - 4} textAnchor="middle" fill="#475569" fontSize={8}>{p.label}</text>
+          <text x={p.x} y={p.y - 6} textAnchor="middle" fill="#cbd5e1" fontSize={8}>{p.value.toFixed(1)}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function SvgDonut({ slices, size = 110 }) {
+  const total = slices.reduce((s, x) => s + x.value, 0) || 1;
+  const cx = size / 2, cy = size / 2, r = size * 0.4, ir = size * 0.27;
+  let angle = -Math.PI / 2;
+  const paths = slices.map(sl => {
+    const sweep = (sl.value / total) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(angle),  y1 = cy + r * Math.sin(angle);
+    angle += sweep;
+    const x2 = cx + r * Math.cos(angle),  y2 = cy + r * Math.sin(angle);
+    const ix1 = cx + ir * Math.cos(angle), iy1 = cy + ir * Math.sin(angle);
+    const ix2 = cx + ir * Math.cos(angle - sweep), iy2 = cy + ir * Math.sin(angle - sweep);
+    const lg = sweep > Math.PI ? 1 : 0;
+    return (
+      <path key={sl.label}
+        d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${lg} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${ix1.toFixed(2)} ${iy1.toFixed(2)} A ${ir} ${ir} 0 ${lg} 0 ${ix2.toFixed(2)} ${iy2.toFixed(2)} Z`}
+        fill={sl.color} opacity={0.9} />
+    );
+  });
+  return <svg width={size} height={size} style={{ display:"block" }}>{paths}</svg>;
+}
+
+// ??? KPI DASHBOARD ???????????????????????????????????????????????????????????
+
+function KpiDashboard({ instruments, training, equipment, suppliers, nonConformances, auditPlans, envRecords, prodRecords, qualityRecords, qualityObjectives, qualityObjectiveSourceInfo }) {
+  const safeArr = v => (Array.isArray(v) ? v : []);
+  const prods    = safeArr(prodRecords);
+  const ncs      = safeArr(nonConformances);
+  const envs     = safeArr(envRecords);
+  const supps    = safeArr(suppliers);
+  const audits   = safeArr(auditPlans);
+  const qrs      = safeArr(qualityRecords);
+  const objectiveItems = safeArr(qualityObjectives);
+
+  const objectiveAchieved = objectiveItems.filter(item => item.status === "achieved").length;
+  const objectivePending = objectiveItems.filter(item => item.status === "pending").length;
+  const objectiveManualReview = objectiveItems.filter(item => item.status !== "achieved" && item.status !== "pending").length;
+  const objectiveRate = objectiveItems.length > 0 ? Math.round(objectiveAchieved / objectiveItems.length * 100) : null;
+
+  const qcByMonth = {};
+  qrs.forEach(record => {
+    const month = String(record.date || record.inspectDate || "").substring(0, 7) || "?芰";
+    if (!qcByMonth[month]) qcByMonth[month] = { total: 0, pass: 0 };
+    qcByMonth[month].total += 1;
+    if ((record.result || "").toUpperCase() === "PASS") qcByMonth[month].pass += 1;
+  });
+  const qcMonthRateData = Object.entries(qcByMonth).sort().slice(-6).map(([month, summary]) => ({
+    label: month === "?芰" ? month : month.substring(5) + "??,
+    value: summary.total > 0 ? Math.round(summary.pass / summary.total * 100) : 0,
+  }));
+
+  // ?? NC ?漲?梁? ?????????????????????????????????????????????
+  const ncByMonth = {};
+  ncs.forEach(nc => {
+    const m = (nc.date || "").substring(0, 7) || "?芰";
+    ncByMonth[m] = (ncByMonth[m] || 0) + 1;
+  });
+  const ncMonthData = Object.entries(ncByMonth).sort().slice(-6)
+    .map(([k, v]) => ({ label: k.substring(5) + "??, value: v }));
+  const openNc = ncs.filter(n => n.status !== "撌脤???).length;
+
+  // ?? ?啣??????????????????????????????????????????????????
+  const envTotal = envs.length;
+  const envPass  = envs.filter(r => r.result === "?").length;
+  const envPassRate = envTotal > 0 ? Math.round(envPass / envTotal * 100) : null;
+  const envByLoc = {};
+  envs.forEach(r => {
+    const loc = r.location || r.point || "?芰";
+    if (!envByLoc[loc]) envByLoc[loc] = { pass: 0, total: 0 };
+    envByLoc[loc].total++;
+    if (r.result === "?") envByLoc[loc].pass++;
+  });
+  const envLocData = Object.entries(envByLoc)
+    .map(([loc, d]) => ({ label: loc.length > 5 ? loc.substring(0, 5) + "?? : loc, value: d.total > 0 ? Math.round(d.pass / d.total * 100) : 0 }));
+
+  // ?? 靘?????????????????????????????????????????????????????
+  const avgSupplierScore = supps.length > 0
+    ? (supps.reduce((s, x) => s + getSupplierScore(x), 0) / supps.length).toFixed(0) : null;
+
+  // ?? 蝔賣摰?????????????????????????????????????????????????
+  const auditTotal = audits.length;
+  const auditDone  = audits.filter(a => a.status === "撌脣???).length;
+  const auditRate  = auditTotal > 0 ? Math.round(auditDone / auditTotal * 100) : null;
+  const auditSlices = [
+    { label: "撌脣???, value: auditDone,                                               color: "#22c55e" },
+    { label: "?脰?銝?, value: audits.filter(a => a.status === "?脰?銝?).length,         color: "#3b82f6" },
+    { label: "閮銝?, value: audits.filter(a => a.status === "閮銝?).length,         color: "#6366f1" },
+    { label: "?暹?",   value: audits.filter(a => a.status === "?暹?").length,           color: "#ef4444" },
+  ].filter(s => s.value > 0);
+
+  // ?? 銝??蝯梯? ?????????????????????????????????????????
+  const defectCount = {};
+  prods.forEach(r => (r.defectReasons || []).forEach(reason => { defectCount[reason] = (defectCount[reason] || 0) + 1; }));
+  const defectReasonData = Object.entries(defectCount).sort((a, b) => b[1] - a[1]).slice(0, 6)
+    .map(([k, v]) => ({ label: k.length > 8 ? k.substring(0, 8) + "?? : k, value: v }));
+
+  // ?? ?脫??????????????????????????????????????????????????
+  const qcTotal = qrs.length;
+  const qcPass  = qrs.filter(r => (r.result || "").toUpperCase() === "PASS").length;
+  const qcRate  = qcTotal > 0 ? Math.round(qcPass / qcTotal * 100) : null;
+  const supplierOverdue = supps.filter(item => daysUntil(addDays(item.lastEvalDate, item.evalIntervalDays)) < 0).length;
+
+  // ?? KPI hero cards ??????????????????????????????????????????
+  const heroCards = [
+    {
+      label: "?釭?格?????,
+      value: objectiveRate !== null ? objectiveRate + "%" : "??,
+      color: objectiveRate === null ? "#475569" : objectiveRate >= 90 ? "#22c55e" : objectiveRate >= 70 ? "#f59e0b" : "#ef4444",
+      desc:  `${objectiveAchieved}/${objectiveItems.length} ???,
+    },
+    {
+      label: "?芷???蝚血?",
+      value: openNc,
+      color: openNc === 0 ? "#22c55e" : openNc <= 3 ? "#f59e0b" : "#ef4444",
+      desc:  `?? ${ncs.length} ?,
+    },
+    ENABLE_ENVIRONMENT_MODULE ? {
+      label: "?啣????,
+      value: envPassRate !== null ? envPassRate + "%" : "??,
+      color: envPassRate === null ? "#475569" : envPassRate >= 90 ? "#22c55e" : envPassRate >= 80 ? "#f59e0b" : "#ef4444",
+      desc:  `${envTotal} 蝑??,
+    } : null,
+    {
+      label: "靘??像??",
+      value: avgSupplierScore !== null ? avgSupplierScore : "??,
+      color: avgSupplierScore === null ? "#475569" : parseFloat(avgSupplierScore) >= 85 ? "#22c55e" : parseFloat(avgSupplierScore) >= 70 ? "#f59e0b" : "#ef4444",
+      desc:  `${supps.length} 摰跆,
+    },
+    {
+      label: "蝔賣摰???,
+      value: auditRate !== null ? auditRate + "%" : "??,
+      color: auditRate === null ? "#475569" : auditRate >= 80 ? "#22c55e" : auditRate >= 50 ? "#f59e0b" : "#ef4444",
+      desc:  `${auditDone}/${auditTotal} ?循,
+    },
+    {
+      label: "?釭瑼ａ????,
+      value: qcRate !== null ? qcRate + "%" : "??,
+      color: qcRate === null ? "#475569" : qcRate >= 95 ? "#22c55e" : qcRate >= 80 ? "#f59e0b" : "#ef4444",
+      desc:  `${qcTotal} ?鉑,
+    },
+  ].filter(Boolean);
+
+  const panel = (children, style = {}) => (
+    <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:20, ...style }}>
+      {children}
+    </div>
+  );
+  const sectionTitle = t => <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14 }}>{t}</div>;
+
+  return (
+    <div>
+      {/* ?? 璅? ?? */}
+      <div style={{ marginBottom:24 }}>
+        <div style={{ fontSize:20, fontWeight:800, color:"#e2e8f0" }}>?蝮暹??銵冽</div>
+        <div style={{ fontSize:13, color:"#64748b", marginTop:4 }}>
+          擃?銝餌恣閬? ??{new Date().toLocaleString("zh-TW", { year:"numeric", month:"long", day:"numeric", hour:"2-digit", minute:"2-digit" })}
+        </div>
+      </div>
+      <ModuleStatusBanner
+        title="?桀??嚗?鞈芰璅蜓瑼?+ 蝟餌絞頛鞈?"
+        tone="mixed"
+        message="????冽??誑??.1?釭?格?蝞∪銵具銝餉? KPI ?????鞈芣炎撽?蝚血??里?詻甇??蝺氬身????蝑頂蝯梯????抵蕭頩扎?撠望??蝔?閬??璅???蝟餌絞?桀??祕????
+      />
+
+      <div style={{ background:"rgba(14,165,233,0.08)", border:"1px solid rgba(14,165,233,0.24)", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
+        <div style={{ fontSize:12, color:"#7dd3fc", fontWeight:800 }}>?釭?格?銝餃???/div>
+        <div style={{ fontSize:13, color:"#dbeafe", marginTop:6 }}>
+          {qualityObjectiveSourceInfo?.message || "撠霈?啣?鞈芰璅恣?嗉”"}
+        </div>
+        <div style={{ fontSize:12, color:"#94a3b8", marginTop:6 }}>
+          靘?瑼?嚗qualityObjectiveSourceInfo?.source_path || "撠???"}?|?敺犖撌亙霈嚗objectiveManualReview} ?|?撠憛怠神嚗objectivePending} ??
+        </div>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginBottom:20 }}>
+        <div style={{ background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.22)", borderRadius:14, padding:"14px 16px" }}>
+          <div style={{ fontSize:12, color:"#86efac", fontWeight:700 }}>閮毀蝞∠?</div>
+          <div style={{ fontSize:13, color:"#d1fae5", marginTop:6 }}>撌脖?摮?{training.length} 雿犖?～training.reduce((sum, employee) => sum + (employee.trainings || []).length, 0)} 蝑?蝺?/div>
+        </div>
+        <div style={{ background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.22)", borderRadius:14, padding:"14px 16px" }}>
+          <div style={{ fontSize:12, color:"#86efac", fontWeight:700 }}>閮剖?靽?</div>
+          <div style={{ fontSize:13, color:"#d1fae5", marginTop:6 }}>撌脖?摮?{equipment.length} ?啗身???暹? {equipment.filter(item => daysUntil(getEquipmentNextMaintenanceDate(item)) < 0).length} ??/div>
+        </div>
+        <div style={{ background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.22)", borderRadius:14, padding:"14px 16px" }}>
+          <div style={{ fontSize:12, color:"#86efac", fontWeight:700 }}>靘?????/div>
+          <div style={{ fontSize:13, color:"#d1fae5", marginTop:6 }}>撌脖?摮?{supps.length} 摰嗡???嚗??暹? {supplierOverdue} 摰?/div>
+        </div>
+      </div>
+
+      {/* ?? Hero KPI ?∠? ?? */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))", gap:12, marginBottom:20 }}>
+        {heroCards.map(k => (
+          <div key={k.label} style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${k.color}30`, borderRadius:14, padding:"18px 16px" }}>
+            <div style={{ fontSize:28, fontWeight:800, color:k.color, lineHeight:1 }}>{k.value}</div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginTop:6 }}>{k.label}</div>
+            <div style={{ fontSize:11, color:"#475569", marginTop:3 }}>{k.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ?? 蝚砌????釭瑼ａ? + NC ?漲 ?? */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
+        {panel(<>
+          {sectionTitle("?釭?格?蝮質汗")}
+          {objectiveItems.length === 0 ? (
+            <div style={{ color:"#475569", fontSize:12 }}>撠霈?啣?鞈芰璅恣?嗉”</div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {objectiveItems.map(item => {
+                const statusMeta = item.status === "achieved"
+                  ? { label: "撌脤???, color: "#22c55e", bg: "rgba(34,197,94,0.12)" }
+                  : item.status === "pending"
+                    ? { label: "撠憛怠神", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" }
+                    : item.status === "missed"
+                      ? { label: "?芷???, color: "#ef4444", bg: "rgba(239,68,68,0.12)" }
+                      : { label: "敺犖撌亙霈", color: "#38bdf8", bg: "rgba(56,189,248,0.12)" };
+                return (
+                  <div key={item.id} style={{ border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"12px 14px", background:"rgba(255,255,255,0.02)" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"center", marginBottom:8 }}>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:800, color:"#e2e8f0" }}>{item.item_no}. {item.objective}</div>
+                        <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>{item.department} 嚚?{item.measurement}</div>
+                      </div>
+                      <div style={{ padding:"4px 10px", borderRadius:999, background:statusMeta.bg, color:statusMeta.color, fontSize:12, fontWeight:800, whiteSpace:"nowrap" }}>{statusMeta.label}</div>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:8, fontSize:12 }}>
+                      <div style={{ color:"#cbd5e1" }}>?餈?隞踝?<span style={{ color:"#e2e8f0", fontWeight:700 }}>{item.latest_month || "?芸‵"}</span></div>
+                      <div style={{ color:"#cbd5e1" }}>?格?嚗?span style={{ color:"#e2e8f0", fontWeight:700 }}>{item.latest_target || "?芸‵"}</span></div>
+                      <div style={{ color:"#cbd5e1" }}>撖衣蜀嚗?span style={{ color:"#e2e8f0", fontWeight:700 }}>{item.latest_actual || "?芸‵"}</span></div>
+                      <div style={{ color:"#cbd5e1" }}>?文?嚗?span style={{ color:"#e2e8f0", fontWeight:700 }}>{item.latest_judgement || "?芸‵"}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>)}
+        {panel(<>
+          {sectionTitle("?釭瑼ａ??漲???%嚗?)}
+          {qcMonthRateData.length === 0
+            ? <div style={{ color:"#475569", fontSize:12 }}>撠?釭瑼ａ?閮?</div>
+            : <SvgLineChart data={qcMonthRateData} color="#22c55e" domainMin={0} domainMax={100} />
+          }
+        </>)}
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
+        {panel(<>
+          {sectionTitle("銝泵???漲隞嗆")}
+          {ncMonthData.length === 0
+            ? <div style={{ color:"#475569", fontSize:12 }}>撠銝泵????/div>
+            : <SvgBarChart data={ncMonthData} color="#f59e0b" />
+          }
+        </>)}
+        {ENABLE_ENVIRONMENT_MODULE && panel(<>
+          {sectionTitle("?皜祇??啣????%嚗?)}
+          {envLocData.length === 0
+            ? <div style={{ color:"#475569", fontSize:12 }}>撠?啣?閮?</div>
+            : <SvgBarChart data={envLocData} color="#38bdf8" />
+          }
+        </>)}
+        {panel(<>
+          {sectionTitle("銝??嚗辣嚗?)}
+          {defectReasonData.length === 0
+            ? <div style={{ color:"#475569", fontSize:12 }}>撠銝??閮?</div>
+            : <SvgBarChart data={defectReasonData} color="#ef4444" />
+          }
+        </>)}
+      </div>
+
+      {/* ?? 蝚砌???靘??帖璇?+ 蝔賣? ?? */}
+      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:16 }}>
+        {panel(<>
+          {sectionTitle("靘?????閬?)}
+          <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+            {supps.length === 0 && <div style={{ color:"#475569", fontSize:12 }}>撠靘?????/div>}
+            {supps.slice(0, 8).map(s => {
+              const score = getSupplierScore(s);
+              const barColor = score >= 85 ? "#22c55e" : score >= 70 ? "#f59e0b" : "#ef4444";
+              return (
+                <div key={s.id || s.name} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ fontSize:12, color:"#94a3b8", width:72, flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name || "??}</div>
+                  <div style={{ flex:1, background:"rgba(255,255,255,0.05)", borderRadius:4, height:10, overflow:"hidden" }}>
+                    <div style={{ width:score + "%", height:"100%", background:barColor, borderRadius:4, transition:"width 0.6s ease" }} />
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:700, color:barColor, width:28, textAlign:"right", flexShrink:0 }}>{score}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>)}
+        {panel(<>
+          {sectionTitle("蝔賣閮摰???)}
+          {auditSlices.length === 0
+            ? <div style={{ color:"#475569", fontSize:12 }}>撠蝔賣閮</div>
+            : (
+              <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+                <SvgDonut slices={auditSlices} size={110} />
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {[
+                    { label:"撌脣???, color:"#22c55e", count: auditDone },
+                    { label:"?脰?銝?, color:"#3b82f6", count: audits.filter(a => a.status === "?脰?銝?).length },
+                    { label:"閮銝?, color:"#6366f1", count: audits.filter(a => a.status === "閮銝?).length },
+                    { label:"?暹?",   color:"#ef4444", count: audits.filter(a => a.status === "?暹?").length },
+                  ].map(item => (
+                    <div key={item.label} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ width:8, height:8, borderRadius:"50%", background:item.color, flexShrink:0 }} />
+                      <div style={{ fontSize:11, color:"#94a3b8" }}>{item.label}</div>
+                      <div style={{ fontSize:12, fontWeight:700, color:item.color, marginLeft:"auto", paddingLeft:8 }}>{item.count}</div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize:13, fontWeight:800, color: auditRate !== null ? (auditRate >= 80 ? "#22c55e" : auditRate >= 50 ? "#f59e0b" : "#ef4444") : "#475569", marginTop:4, borderTop:"1px solid rgba(255,255,255,0.07)", paddingTop:6 }}>
+                    摰???{auditRate !== null ? auditRate + "%" : "??}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+        </>)}
+      </div>
+    </div>
+  );
+}
+
+// ??? DASHBOARD HOME ???????????????????????????????????????????????????????????
+function DashboardHome({ instruments, documents, training, equipment, suppliers, nonConformances, auditPlans, envRecords, setActiveTab, calibrationSourceInfo }) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const overdueInst = instruments.filter(i => {
+    const nextDate = getInstrumentNextCalibrationDate(i);
+    return nextDate && daysUntil(nextDate) < 0;
+  }).length;
+  const upcomingInst = instruments.filter(i => {
+    const nextDate = getInstrumentNextCalibrationDate(i);
+    const d = nextDate ? daysUntil(nextDate) : 9999;
+    return d >= 0 && d <= 30;
+  }).length;
+  const overdueDoc = documents.filter(d => daysUntil(d.nextReview) < 0).length;
+  const expiredTrain = training.filter(t => {
+    const expiry = getEmployeeTrainingExpiry(t);
+    return expiry && daysUntil(expiry) < 0;
+  }).length;
+  const overdueEquip = equipment.filter(e => daysUntil(getEquipmentNextMaintenanceDate(e)) < 0).length;
+  const openNc = nonConformances.filter(n => n.status !== "撌脤???).length;
+  const overdueNc = nonConformances.filter(n => n.status !== "撌脤??? && daysUntil(n.dueDate) < 0).length;
+  const upcomingAudit = auditPlans.filter(a => a.status === "閮銝? && daysUntil(a.scheduledDate) >= 0 && daysUntil(a.scheduledDate) <= 30).length;
+  const envPassRate = envRecords.length > 0 ? Math.round(envRecords.filter(r => r.result === "?").length / envRecords.length * 100) : 0;
+  const poorSupplier = suppliers.filter(s => getSupplierScore(s) < 70).length;
+  const alerts = [];
+  if (overdueInst > 0) alerts.push({ type: "error", msg: `??${overdueInst} ?啣??冽甇?歇?暹?嚗??芸?摰?` });
+  if (upcomingInst > 0) alerts.push({ type: "warn", msg: `??${upcomingInst} ?啣??典???30 憭拙?唳??⊥迤` });
+  if (overdueDoc > 0) alerts.push({ type: "error", msg: `??${overdueDoc} 隞賣?隞嗅歇頞?銴祟??` });
+  if (expiredTrain > 0) alerts.push({ type: "error", msg: `??${expiredTrain} 雿犖?∠?閮毀???歇? });
+  if (overdueEquip > 0) alerts.push({ type: "error", msg: `??${overdueEquip} ?啗身??擗歇?暹?` });
+  if (overdueNc > 0) alerts.push({ type: "error", msg: `??${overdueNc} 蝑?蝚血?撌脤暹??芰?獢 });
+  if (upcomingAudit > 0) alerts.push({ type: "warn", msg: `${upcomingAudit} ?游?函里?詨???30 憭拙?瑁?` });
+  if (poorSupplier > 0) alerts.push({ type: "warn", msg: `??${poorSupplier} 摰嗡???閰?銝雲 70 ? });
+  if (ENABLE_ENVIRONMENT_MODULE && envRecords.length > 0 && envPassRate < 90) alerts.push({ type: "warn", msg: `瞏楊摰斤憓??潛???${envPassRate}%` });
+  const kpis = [
+    { label: "?⊥迤???, value: instruments.length, sub: overdueInst > 0 ? `${overdueInst} ?圈暹?` : "?券甇?虜", color: overdueInst > 0 ? "#ef4444" : "#60a5fa", tab: "calibration" },
+    { label: "蝔??辣", value: documents.length, sub: overdueDoc > 0 ? `${overdueDoc} 隞賡暹?` : "?券??", color: overdueDoc > 0 ? "#ef4444" : "#22c55e", tab: "documents" },
+    { label: "閮毀閮?", value: training.length, sub: expiredTrain > 0 ? `${expiredTrain}鈭粹?? : "?券??", color: expiredTrain > 0 ? "#ef4444" : "#22c55e", tab: "training" },
+    { label: "閮剖?靽?", value: equipment.length, sub: overdueEquip > 0 ? `${overdueEquip} ?圈暹?` : "?券甇?虜", color: overdueEquip > 0 ? "#ef4444" : "#22c55e", tab: "equipment" },
+    { label: "靘???, value: suppliers.length, sub: poorSupplier > 0 ? `${poorSupplier}摰嗉???頞訢 : "?券?", color: poorSupplier > 0 ? "#eab308" : "#22c55e", tab: "supplier" },
+    { label: "銝泵??", value: nonConformances.length, sub: openNc > 0 ? `${openNc}???` : "?券撌脤???, color: openNc > 0 ? "#ef4444" : "#22c55e", tab: "nonconformance" },
+    { label: "蝔賣閮", value: auditPlans.length, sub: upcomingAudit > 0 ? `${upcomingAudit} ??30 憭拙?瑁?` : "憒??脰?", color: upcomingAudit > 0 ? "#f97316" : "#8b5cf6", tab: "auditplan" },
+    ENABLE_ENVIRONMENT_MODULE ? { label: "?啣???葫", value: envRecords.length, sub: `???${envPassRate}%`, color: envPassRate >= 90 ? "#14b8a6" : envPassRate >= 80 ? "#eab308" : "#ef4444", tab: "environment" } : null,
+  ].filter(Boolean);
+  return (
+    <div>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#e2e8f0", letterSpacing: 1 }}>???璆剛隞賣????ISO 9001:2015</div>
+        <div style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>?釭蝞∠?蝟餌絞?芸?蝔賣銝餅????{new Date().toLocaleDateString("zh-TW", { year:"numeric", month:"long", day:"numeric" })}</div>
+      </div>
+      <ModuleStatusBanner
+        title="?桀?蝟餌絞?脣漲"
+        tone="mixed"
+        message={`撌脣?????迤撘???????辣蝞∠???隞嗅澈?I 撌乩??啜?蝚血?蝞∠??里?貉???{calibrationSourceInfo?.mode === "records" ? "?甇?恣?? : ""}?身??擗???蝞∠???蝺渡恣????舀???頂蝯梯????批捆?舀?蝥?摮?KPI ?毽?＊蝷箸迤撘???蝟餌絞鞈?嚗???蕭頩方?撽??}
+      />
+      {alerts.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, color: "#94a3b8", fontWeight: 700, marginBottom: 10 }}>??蝟餌絞霅衣內 ({alerts.length})</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {alerts.map((a, i) => (
+              <div key={i} style={{ background: a.type==="error"?"rgba(239,68,68,0.08)":"rgba(234,179,8,0.08)", border: `1px solid ${a.type==="error"?"rgba(239,68,68,0.3)":"rgba(234,179,8,0.3)"}`, borderRadius: 10, padding: "10px 16px", fontSize: 13, color: a.type==="error"?"#fca5a5":"#fde68a", display:"flex", alignItems:"center", gap:8 }}>
+                <span>{a.type==="error"?"??:"??"}</span><span>{a.msg}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
+        {kpis.map(k => (
+          <div key={k.tab} onClick={() => setActiveTab(k.tab)} style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${k.color}40`, borderRadius: 14, padding: "18px 20px", cursor: "pointer", transition: "all 0.2s" }}
+            onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.08)"}
+            onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.04)"} >
+            <div style={{ fontSize: 28, fontWeight: 800, color: k.color, lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 11, color: k.color, marginTop: 4, fontWeight: 600 }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 14 }}>?餈甇?????/div>
+          {[...instruments]
+            .map(inst => ({ ...inst, dashboardNextCalibration: getInstrumentNextCalibrationDate(inst) }))
+            .sort((a,b) => daysUntil(a.dashboardNextCalibration) - daysUntil(b.dashboardNextCalibration))
+            .slice(0,5)
+            .map(inst => (
+            <div key={inst.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+              <div>
+                <div style={{ fontSize:13, color:"#e2e8f0" }}>{inst.name}</div>
+                <div style={{ fontSize:11, color:"#64748b" }}>{inst.id} 嚚??敺甇?{formatDate(inst.calibratedDate)}</div>
+              </div>
+              <Badge color={urgencyColor(daysUntil(inst.dashboardNextCalibration))}>{urgencyLabel(daysUntil(inst.dashboardNextCalibration))}</Badge>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 14 }}>?芷???蝚血??</div>
+          {nonConformances.filter(n => n.status !== "撌脤???).slice(0,5).map(nc => (
+            <div key={nc.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+              <div>
+                <div style={{ fontSize:12, color:"#e2e8f0" }}>{nc.description.slice(0,20)}{nc.description.length>20?"...":""}</div>
+                <div style={{ fontSize:11, color:"#64748b" }}>{nc.id} ??{nc.dept}</div>
+              </div>
+              <Badge color={daysUntil(nc.dueDate)===9999?"#64748b":daysUntil(nc.dueDate)<0?"#ef4444":daysUntil(nc.dueDate)<=7?"#eab308":"#60a5fa"}>{daysUntil(nc.dueDate)===9999?"?∪?":daysUntil(nc.dueDate)<0?"?暹?":"??+daysUntil(nc.dueDate)+"憭?}</Badge>
+            </div>
+          ))}
+          {nonConformances.filter(n=>n.status!=="撌脤???).length===0 && <div style={{color:"#22c55e",fontSize:13,marginTop:8}}>???桀?瘝??芷???蝚血???/div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ??? MAIN APP ????????????????????????????????????????????????????????????????
+export default function App() {
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "home";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("google") ? "notification" : (params.get("tab") || "home");
+  });
+  const [instruments, setInstruments] = useState(initialInstruments);
+  const [calibrationSourceInfo, setCalibrationSourceInfo] = useState({
+    mode: "fallback",
+    source_path: "",
+    count: initialInstruments.length,
+    latest_plan_path: "",
+    inventory_path: "",
+    manual_update_count: 0,
+    message: "",
+  });
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [focusDocumentId, setFocusDocumentId] = useState("");
+  const [documentsSourceInfo, setDocumentsSourceInfo] = useState({
+    mode: "fallback",
+    source_path: "",
+    count: initialDocuments.length,
+    pending_review_count: 0,
+    message: "",
+  });
+  const [qualityObjectives, setQualityObjectives] = useState([]);
+  const [qualityObjectiveSourceInfo, setQualityObjectiveSourceInfo] = useState({
+    mode: "unloaded",
+    source_path: "",
+    count: 0,
+    achieved_count: 0,
+    pending_count: 0,
+    manual_review_count: 0,
+    achievement_rate: null,
+    message: "",
+  });
+  const [training, setTraining] = useState(initialTraining);
+  const [equipment, setEquipment] = useState(initialEquipment);
+  const [suppliers, setSuppliers] = useState(initialSuppliers);
+  const [nonConformances, setNonConformances] = useState(initialNonConformances);
+  const [highlightNcId, setHighlightNcId] = useState(null);
+  const [expandNcId, setExpandNcId] = useState(null);
+  const [pendingNcDraft, setPendingNcDraft] = useState(null);
+  const [auditPlans, setAuditPlans] = useState(initialAuditPlans);
+  const [envRecords, setEnvRecords] = useState(initialEnvRecords);
+  const [prodRecords, setProdRecords] = useState(() => loadStoredState("audit_prodrecords", initialProdRecords));
+  const [qualityRecords, setQualityRecords] = useState(() => loadStoredState("audit_qualityrecords", initialQualityRecords));
+  const [manuals] = useState(initialManuals);
+  const runningFromFile = typeof window !== "undefined" && window.location.protocol === "file:";
+
+  useEffect(() => saveStoredState("audit_prodrecords", prodRecords), [prodRecords]);
+  useEffect(() => saveStoredState("audit_qualityrecords", qualityRecords), [qualityRecords]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOpsData() {
+      try {
+        const requests = [
+          apiJson("/api/training-records"),
+          apiJson("/api/equipment-records"),
+          apiJson("/api/supplier-records"),
+          apiJson("/api/nonconformances"),
+          apiJson("/api/audit-plans"),
+        ];
+        if (ENABLE_ENVIRONMENT_MODULE) requests.push(apiJson("/api/environment-records"));
+        const [trainingPayload, equipmentPayload, supplierPayload, ncPayload, auditPayload, envPayload] = await Promise.all(requests);
+        if (cancelled) return;
+        setTraining(trainingPayload.items || []);
+        setEquipment(equipmentPayload.items || []);
+        setSuppliers(supplierPayload.items || []);
+        setNonConformances(ncPayload.items || []);
+        setAuditPlans(auditPayload.items || []);
+        setEnvRecords(ENABLE_ENVIRONMENT_MODULE ? (envPayload?.items || []) : []);
+      } catch (err) {
+        console.warn("Failed to load operation data", err);
+      }
+    }
+    loadOpsData();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCalibrationRecords() {
+      try {
+        const payload = await apiJson("/api/burlan/calibration-instruments");
+        if (cancelled) return;
+        const items = (payload.items || []).map(mapCalibrationInstrument);
+        if (items.length > 0) {
+          setInstruments(items);
+          setCalibrationSourceInfo({
+            mode: payload.mode || "records",
+            source_path: payload.source_path || "",
+            count: payload.count || items.length,
+            latest_plan_path: payload.latest_plan_path || "",
+            inventory_path: payload.inventory_path || "",
+            manual_update_count: payload.manual_update_count || 0,
+            message: payload.message || "",
+          });
+          return;
+        }
+        setCalibrationSourceInfo({
+          mode: "fallback",
+          source_path: payload.source_path || "",
+          count: initialInstruments.length,
+          latest_plan_path: payload.latest_plan_path || "",
+          inventory_path: payload.inventory_path || "",
+          manual_update_count: payload.manual_update_count || 0,
+          message: "9?葫鞈?蝞∠?蝔? 瘝?霈?啣?典??其?閬質”?悼甇瑁”嚗?＊蝷箸?????渲???,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setCalibrationSourceInfo({
+          mode: "fallback",
+          source_path: "",
+          count: initialInstruments.length,
+          latest_plan_path: "",
+          inventory_path: "",
+          manual_update_count: 0,
+          message: "9?葫鞈?蝞∠?蝔? 頛憭望?嚗?＊蝷箸?????渲???" + err.message,
+        });
+      }
+    }
+    loadCalibrationRecords();
+    return () => { cancelled = true; };
+  }, []);
+
+  function handleCreateNonConformanceDraft(draft) {
+    setPendingNcDraft(draft);
+    setActiveTab("nonconformance");
+  }
+
+  function handleOpenDocumentFromFlow(docId, tab = "documents") {
+    if (!docId) return;
+    setFocusDocumentId(docId);
+    setActiveTab(tab);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBurlanDocuments() {
+      try {
+        const payload = await apiJson("/api/burlan/master-documents");
+        if (cancelled) return;
+        const items = (payload.items || []).filter(item => item.path).map(mapBurlanMasterToDocument);
+        if (items.length > 0) {
+          setDocuments(items);
+          setDocumentsSourceInfo({
+            mode: "master",
+            source_path: payload.source_path || "",
+            count: payload.count || items.length,
+            pending_review_count: payload.pending_review_count || 0,
+            message: payload.message || "",
+          });
+          return;
+        }
+        setDocumentsSourceInfo({
+          mode: "fallback",
+          source_path: payload.source_path || "",
+          count: initialDocuments.length,
+          pending_review_count: payload.pending_review_count || 0,
+          message: "??蜓皜瘝??舐?辣嚗?＊蝷箏撱箏??渲???,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setDocumentsSourceInfo({
+          mode: "fallback",
+          source_path: "",
+          count: initialDocuments.length,
+          pending_review_count: 0,
+          message: "??蜓皜頛憭望?嚗?＊蝷箏撱箏??渲???" + err.message,
+        });
+      }
+    }
+    loadBurlanDocuments();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadQualityObjectives() {
+      try {
+        const payload = await apiJson("/api/burlan/quality-objectives");
+        if (cancelled) return;
+        setQualityObjectives(payload.items || []);
+        setQualityObjectiveSourceInfo({
+          mode: "objective_master",
+          source_path: payload.source_path || "",
+          count: payload.count || 0,
+          achieved_count: payload.achieved_count || 0,
+          pending_count: payload.pending_count || 0,
+          manual_review_count: payload.manual_review_count || 0,
+          achievement_rate: payload.achievement_rate,
+          message: payload.message || "",
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setQualityObjectives([]);
+        setQualityObjectiveSourceInfo({
+          mode: "error",
+          source_path: "",
+          count: 0,
+          achieved_count: 0,
+          pending_count: 0,
+          manual_review_count: 0,
+          achievement_rate: null,
+          message: "?釭?格?蝞∪銵刻??亙仃??" + err.message,
+        });
+      }
+    }
+    loadQualityObjectives();
+    return () => { cancelled = true; };
+  }, []);
+
+  const tabs = [
+    { id: "home",           label: "銝餅??,   icon: "?? },
+    { id: "kpi",            label: "蝮暹??銵冽", icon: "?? },
+    { id: "calibration",    label: "?⊥迤蝞∠?", icon: "?? },
+    { id: "documents",      label: "?辣蝞∠?", icon: "?? },
+    { id: "library",        label: "?辣摨?,   icon: "??" },
+    { id: "training",       label: "閮毀蝞∠?", icon: "?? },
+    { id: "equipment",      label: "閮剖?靽?", icon: "?? },
+    { id: "supplier",       label: "靘??恣??, icon: "?? },
+    { id: "nonconformance", label: "銝泵?恣??, icon: "?? },
+    { id: "auditplan",      label: "蝔賣閮", icon: "?? },
+    ENABLE_ENVIRONMENT_MODULE ? { id: "environment", label: "?啣???葫", icon: "?? } : null,
+    { id: "production",     label: "閮??臬", icon: "R" },
+    { id: "notification",   label: "???", icon: "?? },
+    { id: "aiworkbench",    label: "AI 撌乩???, icon: "AI" },
+    { id: "report",         label: "蝔賣?勗?", icon: "?? },
+  ].filter(Boolean);
+
+  function renderTab() {
+    switch(activeTab) {
+      case "home":           return <DashboardHome instruments={instruments} documents={documents} training={training} equipment={equipment} suppliers={suppliers} nonConformances={nonConformances} auditPlans={auditPlans} envRecords={envRecords} setActiveTab={setActiveTab} calibrationSourceInfo={calibrationSourceInfo} />;
+      case "kpi":            return <KpiDashboard instruments={instruments} training={training} equipment={equipment} suppliers={suppliers} nonConformances={nonConformances} auditPlans={auditPlans} envRecords={envRecords} prodRecords={prodRecords} qualityRecords={qualityRecords} qualityObjectives={qualityObjectives} qualityObjectiveSourceInfo={qualityObjectiveSourceInfo} />;
+      case "calibration":    return <CalibrationTab instruments={instruments} setInstruments={setInstruments} calibrationSourceInfo={calibrationSourceInfo} setCalibrationSourceInfo={setCalibrationSourceInfo} />;
+      case "documents":      return <DocumentsManagerTab documents={documents} setDocuments={setDocuments} manuals={manuals} documentsSourceInfo={documentsSourceInfo} focusDocumentId={focusDocumentId} onFocusDocumentDone={() => setFocusDocumentId("")} />;
+      case "library":        return <LibraryHierarchyTab documents={documents} manuals={manuals} documentsSourceInfo={documentsSourceInfo} focusDocumentId={focusDocumentId} onFocusDocumentDone={() => setFocusDocumentId("")} />;
+      case "training":       return <TrainingTab training={training} setTraining={setTraining} />;
+      case "equipment":      return <EquipmentTab equipment={equipment} setEquipment={setEquipment} />;
+      case "supplier":       return <SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} />;
+      case "nonconformance": return <NonConformanceTab nonConformances={nonConformances} setNonConformances={setNonConformances} highlightNcId={highlightNcId} onHighlightDone={() => setHighlightNcId(null)} expandNcId={expandNcId} onExpandDone={() => setExpandNcId(null)} documents={documents} documentsSourceInfo={documentsSourceInfo} draftSeed={pendingNcDraft} onDraftSeedConsumed={() => setPendingNcDraft(null)} onAuditPlansSync={setAuditPlans} onOpenDocument={handleOpenDocumentFromFlow} />;
+      case "auditplan":      return <AuditPlanTab auditPlans={auditPlans} setAuditPlans={setAuditPlans} documents={documents} documentsSourceInfo={documentsSourceInfo} onCreateNonConformance={handleCreateNonConformanceDraft} nonConformances={nonConformances} setActiveTab={setActiveTab} setHighlightNcId={setHighlightNcId} setExpandNcId={setExpandNcId} onOpenDocument={handleOpenDocumentFromFlow} />;
+      case "environment":    return ENABLE_ENVIRONMENT_MODULE ? <EnvironmentTab envRecords={envRecords} setEnvRecords={setEnvRecords} /> : <div style={{ padding:24, color:"#94a3b8" }}>????雿輻?啣???葫璅∠?嚗歇敺蜓瘚??梯???/div>;
+    case "production":     return <PageErrorBoundary pageName="????" storageKeys={["audit_prodrecords", "audit_qualityrecords"]}><ProductionTab envRecords={envRecords} prodRecords={prodRecords} setProdRecords={setProdRecords} qualityRecords={qualityRecords} setQualityRecords={setQualityRecords} nonConformances={nonConformances} auditPlans={auditPlans} setActiveTab={setActiveTab} setHighlightNcId={setHighlightNcId} setExpandNcId={setExpandNcId} /></PageErrorBoundary>;
+      case "notification":   return <NotificationTab instruments={instruments} documents={documents} equipment={equipment} suppliers={suppliers} nonConformances={nonConformances} auditPlans={auditPlans} />;
+      case "aiworkbench":    return <AIWorkbenchTab documents={documents} manuals={manuals} nonConformances={nonConformances} />;
+      case "report":         return <ReportTab instruments={instruments} documents={documents} training={training} equipment={equipment} suppliers={suppliers} nonConformances={nonConformances} auditPlans={auditPlans} envRecords={envRecords} />;
+      default:               return <DashboardHome instruments={instruments} documents={documents} training={training} equipment={equipment} suppliers={suppliers} nonConformances={nonConformances} auditPlans={auditPlans} envRecords={envRecords} setActiveTab={setActiveTab} calibrationSourceInfo={calibrationSourceInfo} />;
+    }
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top left, rgba(14,165,233,0.08), transparent 26%), linear-gradient(135deg, #08101f 0%, #0b1220 45%, #080d18 100%)", color: "#e2e8f0", fontFamily: "'Noto Sans TC', sans-serif" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 20, background: "rgba(8,15,30,0.88)", borderBottom: "1px solid rgba(148,163,184,0.12)", backdropFilter: "blur(16px)", padding: "0 24px", boxShadow: "0 10px 30px rgba(2,6,23,0.18)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, overflowX: "auto" }}>
+          <div style={{ padding: "14px 0", minWidth: 170 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "#7dd3fc", fontWeight: 800 }}>??QMS</div>
+            <div style={{ fontSize: 15, color: "#e2e8f0", fontWeight: 800, marginTop: 4 }}>?釭蝔賣撌乩???/div>
+          </div>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+              background: activeTab === t.id ? "rgba(56,189,248,0.14)" : "transparent",
+              border: activeTab === t.id ? "1px solid rgba(56,189,248,0.28)" : "1px solid transparent",
+              cursor: "pointer",
+              padding: "10px 14px",
+              fontSize: 12,
+              fontWeight: 700,
+              color: activeTab === t.id ? "#dbeafe" : "#94a3b8",
+              borderRadius: 12,
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              transition: "all 0.2s ease",
+              margin: "10px 0",
+            }}>
+              <span style={{ fontSize: 12, minWidth: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: activeTab === t.id ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)" }}>{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ maxWidth: 1460, margin: "0 auto", padding: "28px 24px 40px" }}>
+        {runningFromFile && (
+          <div style={{ marginBottom: 18, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.24)", borderRadius: 16, padding: 16, boxShadow: uiTheme.shadow }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#fcd34d", marginBottom: 6 }}>雿??湔?? index.html</div>
+            <div style={{ fontSize: 13, color: uiTheme.textMuted, lineHeight: 1.8 }}>
+              ?見?臭誑??恍嚗?????蜓皜?I 蝔賣?PI 霈??摰??航銝?甇?虜?遣霅唳??
+              <span style={{ color: "#e2e8f0", fontWeight: 700 }}> ????里?貊頂蝯?bat </span>
+              嚗??湔??
+              <span style={{ color: "#e2e8f0", fontWeight: 700 }}> http://127.0.0.1:8888/ </span>
+              ?脣蝟餌絞??
+            </div>
+          </div>
+        )}
+        {renderTab()}
+      </div>
+    </div>
+  );
+}
+
+
+
+function TrainingTab({ training, setTraining }) {
+  const [selectedId, setSelectedId] = useState("");
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [employeeDraft, setEmployeeDraft] = useState({ id: "", name: "", dept: "", role: "", hireDate: "", note: "" });
+  const [trainingDraft, setTrainingDraft] = useState({ course: "", date: "", type: "???", result: "??僱", cert: "??, validUntil: "", hours: "", instructor: "", note: "" });
+  const [editingEmployeeId, setEditingEmployeeId] = useState("");
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("ALL");
+
+  useEffect(() => {
+    if (!training.length) {
+      setSelectedId("");
+      return;
+    }
+    if (!training.some(item => item.id === selectedId)) {
+      setSelectedId(training[0].id);
+    }
+  }, [training, selectedId]);
+
+  const selected = training.find(item => item.id === selectedId) || null;
+  const deptOptions = Array.from(new Set(training.map(item => item.dept).filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  const filteredEmployees = training.filter(item => {
+    const matchesDept = deptFilter === "ALL" || item.dept === deptFilter;
+    const keyword = search.trim().toLowerCase();
+    const matchesSearch = !keyword || [item.id, item.name, item.dept, item.role].some(value => String(value || "").toLowerCase().includes(keyword));
+    return matchesDept && matchesSearch;
+  });
+  const totalTraining = training.reduce((sum, employee) => sum + (employee.trainings || []).length, 0);
+  const externalTrainingCount = training.reduce((sum, employee) => sum + (employee.trainings || []).filter(item => item.type === "?叟▼?").length, 0);
+  const certTrainingCount = training.reduce((sum, employee) => sum + (employee.trainings || []).filter(item => item.cert === "??).length, 0);
+  const expiringCount = training.filter(employee => {
+    const expiry = getEmployeeTrainingExpiry(employee);
+    return expiry && daysUntil(expiry) <= 30;
+  }).length;
+
+  function resetEmployeeDraft(record = null) {
+    setEmployeeDraft(record ? {
+      id: record.id || "",
+      name: record.name || "",
+      dept: record.dept || "",
+      role: record.role || "",
+      hireDate: record.hireDate || "",
+      note: record.note || "",
+    } : { id: "", name: "", dept: "", role: "", hireDate: "", note: "" });
+  }
+
+  function resetTrainingDraft() {
+    setTrainingDraft({ course: "", date: "", type: "???", result: "??僱", cert: "??, validUntil: "", hours: "", instructor: "", note: "" });
+  }
+
+  async function saveEmployeeRecord(record, successText) {
+    setBusy("save-employee");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/training-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record }),
+      });
+      setTraining(payload.items || []);
+      setSelectedId(record.id || payload.saved?.[0]?.id || "");
+      setMessage(successText);
+    } catch (err) {
+      setMessage("?踐???殉瘥???剜???? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveEmployeeBasic() {
+    if (!employeeDraft.id.trim() || !employeeDraft.name.trim()) {
+      setMessage("?ｇ??????芣扔?箏???????);
+      return;
+    }
+    const base = training.find(item => item.id === editingEmployeeId) || { trainings: [] };
+    await saveEmployeeRecord(
+      {
+        ...base,
+        ...employeeDraft,
+        trainings: Array.isArray(base.trainings) ? base.trainings : [],
+      },
+      editingEmployeeId ? "?謆??祉???軋??蟡??謕? : "?謘?豯???嚚?
+    );
+    setShowEmployeeModal(false);
+    setEditingEmployeeId("");
+    resetEmployeeDraft();
+  }
+
+  async function saveTrainingEntry() {
+    if (!selected) {
+      setMessage("?ｇ???鞊???選??⊥?銋?);
+      return;
+    }
+    if (!trainingDraft.course.trim()) {
+      setMessage("?ｇ?????方??????);
+      return;
+    }
+    await saveEmployeeRecord(
+      {
+        ...selected,
+        trainings: [...(selected.trainings || []), { ...trainingDraft, id: `${selected.id}-T${Date.now()}` }],
+      },
+      "????殉此??箸葡????
+    );
+    setShowTrainingModal(false);
+    resetTrainingDraft();
+  }
+
+  async function deleteEmployee(recordId) {
+    if (!window.confirm("??畸??謕???芣扔?綽???▽??殉瘥?殉死???????摰?甇??????秋撒??????)) return;
+    setBusy("delete-employee");
+    setMessage("");
+    try {
+      const encodedId = encodeURIComponent(recordId);
+      const payload = await apiDeleteWithFallback(`/api/training-records/${encodedId}`, `/api/training-records/${encodedId}/delete`);
+      setTraining(payload.items || []);
+      if (selectedId === recordId) setSelectedId((payload.items || [])[0]?.id || "");
+      setMessage("?????漸?????箸葡????);
+    } catch (err) {
+      setMessage("??畸???芣扔?剜???? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteTrainingEntry(entryId) {
+    if (!selected) return;
+    if (!window.confirm("?????秋撒???氐謕??殉瘥?殉死????")) return;
+    await saveEmployeeRecord(
+      {
+        ...selected,
+        trainings: (selected.trainings || []).filter(item => item.id !== entryId),
+      },
+      "??????箸葡????
+    );
+  }
+  return (
+    <div>
+      <SectionHeader title="?剔??⊿?扳??殉死?" count={training.length} color="#34d399" />
+    <ModuleStatusBanner
+        title="?獢??蹓遴??垮????璇??謕?????伐???
+        tone="system"
+        message="?謕??蹓踐?????????????????????殉瘥???蹇結?迎??望撖???肅????????????祗????蹓箄?憳蹓鳴??????寞??鞈??踐??????綽????????謕墨?殉瘥?殉死??皝??穿??啾??
+      />
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginBottom: 16 }}>
+        <button onClick={() => { setEditingEmployeeId(""); resetEmployeeDraft(); setShowEmployeeModal(true); }} style={{ background:"linear-gradient(135deg,#059669,#10b981)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 16px", fontSize:13, fontWeight:700 }}>????剔???/button>
+        {message && <div style={{ fontSize:12, color:"#bbf7d0" }}>{message}</div>}
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="??芣扔?剔捂?? value={training.length} color="#34d399" />
+        <StatCard label="?殉瘥?株???? value={totalTraining} color="#60a5fa" />
+        <StatCard label="?叟▼????? value={externalTrainingCount} color="#a78bfa" />
+        <StatCard label="????鞎??? value={certTrainingCount} color="#f472b6" />
+        <StatCard label="30 ?剜?????" value={expiringCount} color="#f97316" />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>???</div>
+          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={inputStyle}>
+            <option value="ALL">??賂???</option>
+            {deptOptions.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?謚?</div>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="??????⊥?鈭行??貔螞蹓???蹓選???蹓橫??? style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: "0 0 260px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {filteredEmployees.map(emp => {
+            const hireMonths = Math.floor((today - new Date(emp.hireDate)) / (30*86400000));
+            const isNew = hireMonths < 3;
+            const expiry = getEmployeeTrainingExpiry(emp);
+            const days = daysUntil(expiry);
+            return (<div key={emp.id} onClick={() => setSelectedId(emp.id)} style={{ background: selected?.id===emp.id?"rgba(52,211,153,0.15)":"rgba(255,255,255,0.04)", border: `1px solid ${selected?.id===emp.id?"rgba(52,211,153,0.4)":"rgba(255,255,255,0.08)"}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap:8 }}><div><div style={{ fontWeight: 700, color: "#e2e8f0", fontSize: 14 }}>{emp.name}</div><div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{emp.dept || "??詹???"} 蝜?{emp.role || "??詹???"}</div></div><div style={{ textAlign: "right" }}>{isNew&&<Badge color="#f97316">???/Badge>}{expiry && <div style={{ marginTop:4 }}><Badge color={urgencyColor(days)}>{urgencyLabel(days)}</Badge></div>}<div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{(emp.trainings || []).length} ?????/div></div></div></div>);
+          })}
+          {filteredEmployees.length === 0 && <div style={{ textAlign:"center", padding:"24px 18px", color:"#64748b", background:"rgba(255,255,255,0.03)", borderRadius:12 }}>?獢?????????颲????嚚?/div>}
+        </div>
+        <div style={{ flex: 1, minWidth: 280 }}>
+          {selected ? (
+            <div>
+              <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)", marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap:12, flexWrap:"wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0" }}>{selected.name}</div>
+                    <div style={{ color: "#64748b", fontSize: 13, marginTop: 4 }}>{selected.id} 蝜?{selected.dept} 蝜?{selected.role}</div>
+                    <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>????隡?{formatDate(selected.hireDate)}</div>
+                    {selected.note && <div style={{ color:"#94a3b8", fontSize:12, marginTop:6 }}>?謕??爸selected.note}</div>}
+                  </div>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    <button onClick={() => { setEditingEmployeeId(selected.id); resetEmployeeDraft(selected); setShowEmployeeModal(true); }} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, color:"#cbd5e1", cursor:"pointer", padding:"7px 14px", fontSize:12, fontWeight:700 }}>?賣?蝞</button>
+                    <button onClick={() => { resetTrainingDraft(); setShowTrainingModal(true); }} style={{ background: "linear-gradient(135deg, #059669, #10b981)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", padding: "7px 14px", fontSize: 12, fontWeight: 700 }}>??????殉瘥</button>
+                    <button onClick={() => deleteEmployee(selected.id)} disabled={busy !== ""} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"7px 14px", fontSize:12, fontWeight:700, opacity:busy ? 0.7 : 1 }}>??畸??剔???/button>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(selected.trainings || []).map((t) => (
+                  <div key={t.id || t.course} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 16px", display: "flex", gap: 16, alignItems: "center", flexWrap:"wrap" }}>
+                    <div style={{ flex: 1, minWidth:220 }}>
+                      <div style={{ fontWeight: 600, color: "#e2e8f0", fontSize: 13 }}>{t.course}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{formatDate(t.date)} 蝜?{t.type}{t.instructor ? ` 蝜?????${t.instructor}` : ""}</div>
+                      {(t.validUntil || t.note) && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{t.validUntil ? `?????${formatDate(t.validUntil)}` : ""}{t.validUntil && t.note ? " 蝜?" : ""}{t.note || ""}</div>}
+                    </div>
+                    <Badge color={t.result==="??僱"?"#22c55e":t.result==="??????"#ef4444":"#f59e0b"}>{t.result}</Badge>
+                    {t.cert==="??&&<Badge color="#a78bfa">?????/Badge>}
+                    <button onClick={() => deleteTrainingEntry(t.id)} disabled={busy !== ""} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"6px 12px", fontSize:12, opacity:busy ? 0.7 : 1 }}>??畸?</button>
+                  </div>
+                ))}
+                {(selected.trainings || []).length === 0 && <div style={{ textAlign:"center", padding:"24px 20px", color:"#64748b", background:"rgba(255,255,255,0.03)", borderRadius:10 }}>?謕???芣扔?獢????????箸葡????/div>}
+              </div>
+            </div>
+          ) : (<div style={{ textAlign: "center", padding: "60px 20px", color: "#475569" }}>???綜筐蹓?銵蹓??芣扔?漱貔????箸葡???/div>)}
+        </div>
+      </div>
+      {showEmployeeModal && (
+        <Modal title={editingEmployeeId ? "?賣?蝞??" : "????剔???} onClose={() => { setShowEmployeeModal(false); setEditingEmployeeId(""); }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {[["??芣扔?箏?","id","text"],["?軋?","name","text"],["???","dept","text"],["???","role","text"],["?????,"hireDate","date"]].map(([label, field, type]) => (
+              <div key={field}>
+                <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div>
+                <input type={type} value={employeeDraft[field]} onChange={e => setEmployeeDraft({ ...employeeDraft, [field]: e.target.value })} style={inputStyle} disabled={editingEmployeeId && field === "id"} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>?謕?</div>
+              <textarea value={employeeDraft.note} onChange={e => setEmployeeDraft({ ...employeeDraft, note: e.target.value })} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} />
+            </div>
+            <button onClick={saveEmployeeBasic} disabled={busy !== ""} style={{ background:"linear-gradient(135deg,#059669,#10b981)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy ? 0.7 : 1 }}>{busy === "save-employee" ? "?踐????.." : "?????踐??"}</button>
+          </div>
+        </Modal>
+      )}
+      {showTrainingModal && selected && (
+        <Modal title={`????殉瘥?殉死???{selected.name}`} onClose={() => setShowTrainingModal(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[["?方????","course","text"],["?殉瘥?鈭?","date","date"],["????賹?","validUntil","date"],["?蹇","hours","number"],["????/ ??朣?,"instructor","text"]].map(([label,field,type]) => (
+              <div key={field}>
+                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>{label}</div>
+                <input type={type} value={trainingDraft[field]} onChange={e => setTrainingDraft({ ...trainingDraft, [field]: e.target.value })} style={inputStyle} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>?殉瘥?遴竣?</div>
+              <select value={trainingDraft.type} onChange={e => setTrainingDraft({ ...trainingDraft, type: e.target.value })} style={inputStyle}><option>???</option><option>?叟▼?</option></select>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>?堊??航??</div>
+              <select value={trainingDraft.result} onChange={e => setTrainingDraft({ ...trainingDraft, result: e.target.value })} style={inputStyle}><option>??僱</option><option>?????/option><option>?綽???/option></select>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>??秋?????????/div>
+              <select value={trainingDraft.cert} onChange={e => setTrainingDraft({ ...trainingDraft, cert: e.target.value })} style={inputStyle}><option>??/option><option>??/option></select>
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 5 }}>?謕?</div>
+              <textarea value={trainingDraft.note} onChange={e => setTrainingDraft({ ...trainingDraft, note: e.target.value })} style={{ ...inputStyle, minHeight:72, resize:"vertical" }} />
+            </div>
+            <button onClick={saveTrainingEntry} disabled={busy !== ""} style={{ background: "linear-gradient(135deg, #059669, #10b981)", border: "none", borderRadius: 10, color: "#fff", cursor: "pointer", padding: "12px 24px", fontSize: 15, fontWeight: 700, marginTop: 8, opacity:busy ? 0.7 : 1 }}>{busy === "save-employee" ? "?踐????.." : "????殉瘥?殉死?"}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ?????? EQUIPMENT TAB ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+function EnvironmentTab({ envRecords, setEnvRecords }) {
+  const emptyDraft = { date:"", measuredAt:"", location:"??璆銋??", point:"", particles03:0, particles05:0, particles5:0, temp:"", humidity:"", pressure:"", operator:"", result:"" };
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState("");
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [summary, setSummary] = useState({ total: envRecords.length, passed: envRecords.filter(r=>r.result==="??僱").length, warning: envRecords.filter(r=>r.result==="???").length, failed: envRecords.filter(r=>r.result==="?????).length });
+  const [showAdd, setShowAdd] = useState(false);
+  const [draft, setDraft] = useState(emptyDraft);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importSummary, setImportSummary] = useState(null);
+  const environmentSortKey = (item) => {
+    const measuredAt = String(item?.measuredAt || "").trim();
+    if (measuredAt) {
+      const measuredValue = Date.parse(measuredAt);
+      if (!Number.isNaN(measuredValue)) return measuredValue;
+    }
+    const datePart = String(item?.date || "").trim();
+    const timeMatch = String(item?.location || "").match(/(\d{1,2}:\d{2}:\d{2})/);
+    const timePart = timeMatch ? timeMatch[1] : "00:00:00";
+    const candidate = `${datePart}T${timePart}`;
+    const value = Date.parse(candidate);
+    return Number.isNaN(value) ? 0 : value;
+  };
+  const sorted = [...envRecords].sort((a, b) => environmentSortKey(a) - environmentSortKey(b));
+  const resultColor = r => r==="??僱"?"#22c55e":r==="???"?"#eab308":"#ef4444";
+
+  useEffect(() => {
+    const nextSummary = {
+      total: envRecords.length,
+      passed: envRecords.filter(item=>item.result==="??僱").length,
+      warning: envRecords.filter(item=>item.result==="???").length,
+      failed: envRecords.filter(item=>item.result==="?????).length,
+    };
+    setSummary(nextSummary);
+  }, [envRecords]);
+
+  function buildRecord(record) {
+    const point = String(record.point || "").trim();
+    const measuredAt = String(record.measuredAt || "").trim();
+    const particles03 = parseInt(record.particles03 || 0, 10) || 0;
+    const particles05 = parseInt(record.particles05 || 0, 10) || 0;
+    const particles5 = parseInt(record.particles5 || 0, 10) || 0;
+    const temp = record.temp === "" ? "" : parseFloat(record.temp || 0) || 0;
+    const humidity = record.humidity === "" ? "" : parseFloat(record.humidity || 0) || 0;
+    const pressure = record.pressure === "" ? "" : parseFloat(record.pressure || 0) || 0;
+    let result = record.result;
+    if (!result) {
+      if (particles05 > 1000 || particles5 > 35 || (temp !== "" && (temp > 23 || temp < 21)) || (humidity !== "" && (humidity > 50 || humidity < 40)) || (pressure !== "" && pressure < 10)) result = "?????;
+      else if (particles05 > 800 || particles5 > 20 || (temp !== "" && temp > 22.5) || (humidity !== "" && humidity > 48)) result = "???";
+      else result = "??僱";
+    }
+    return { ...record, point, measuredAt, particles03, particles05, particles1:0, particles5, temp, humidity, pressure, result };
+  }
+
+  async function saveRecords(records, doneMessage, replaceSourceFile = "") {
+    setBusy("save");
+    setMessage("");
+    try {
+      const payload = await apiJson("/api/environment-records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records, replace_source_file: replaceSourceFile }),
+      });
+      setEnvRecords(payload.items || []);
+      setSummary(payload.summary || { total:0, passed:0, warning:0, failed:0 });
+      setMessage(doneMessage);
+      return true;
+    } catch (err) {
+      setMessage("?殉朵??剜???? + err.message);
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function loadRange(start = rangeStart, end = rangeEnd) {
+    setBusy("query");
+    setMessage("");
+    try {
+      const params = new URLSearchParams();
+      if (start) params.set("start", start);
+      if (end) params.set("end", end);
+      const payload = await apiJson("/api/environment-records" + (params.toString() ? "?" + params.toString() : ""));
+      setEnvRecords(payload.items || []);
+      setSummary(payload.summary || { total:0, passed:0, warning:0, failed:0 });
+      setMessage("????蹇???????謘??謕?);
+    } catch (err) {
+      setMessage("??謘潔??謅?" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function addRecord() {
+    const ok = await saveRecords([buildRecord(draft)], "?謘?豯佇??謆????謕?);
+    if (!ok) return;
+    setShowAdd(false);
+    setDraft(emptyDraft);
+  }
+
+  async function deleteRecord(id) {
+    if (!window.confirm("?????秋撒???氐謕??????????")) return;
+    setBusy("delete");
+    try {
+      const payload = await apiJson("/api/environment-records/" + encodeURIComponent(id), { method:"DELETE" });
+      setEnvRecords(payload.items || []);
+      setSummary(payload.summary || { total:0, passed:0, warning:0, failed:0 });
+      setMessage("????止?????謕?);
+    } catch (err) {
+      setMessage("??畸??剜???? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteRange() {
+    if (!rangeStart && !rangeEnd) {
+      setMessage("?ｇ???鞊??秋撒?????鈭???????);
+      return;
+    }
+    if (!window.confirm("?????秋撒???縐?蹇??????????伍?????謕???)) return;
+    setBusy("delete-range");
+    try {
+      const payload = await apiJson("/api/environment-records/delete-range", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start: rangeStart, end: rangeEnd }),
+      });
+      setEnvRecords(payload.items || []);
+      setSummary(payload.summary || { total:0, passed:0, warning:0, failed:0 });
+      setMessage(`????${payload.deleted || 0} ????謕蹐?;
+    } catch (err) {
+      setMessage("????伐?????謅?" + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function importFile(file) {
+    if (!file) return;
+    setBusy("import");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const payload = await apiJson("/api/environment-records/import", { method:"POST", body:formData });
+      setImportPreview(payload.records || []);
+      setImportSummary(payload.summary || null);
+      setMessage((payload.records || []).length ? "???謘??迎???謕??ｇ??⊿??????銋? : "?澗?????????選?謆?????血??朱???穿??鈭???????????蹇??????賹??澗?赯菜??純?);
+    } catch (err) {
+      setMessage("??穿?剜???? + err.message);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function confirmImport() {
+    if (!importPreview.length) return;
+    const replaceSourceFile = importPreview[0]?.source_file || "";
+    const records = importPreview.map(({ missing_fields, id, ...record }) => record);
+    const ok = await saveRecords(records, `????${records.length} ?????畸?????謕蹐? replaceSourceFile);
+    if (!ok) return;
+    setImportPreview([]);
+    setImportSummary(null);
+  }
+
+  const passRate = summary.total > 0 ? Math.round((summary.passed / summary.total) * 100) : 0;
+  const formatMaybeNumber = (value, digits = 1) => {
+    if (value === "" || value === null || value === undefined) return "??;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "??;
+  };
+  const formatMaybeInteger = (value) => {
+    if (value === "" || value === null || value === undefined) return "??;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toLocaleString() : "??;
+  };
+
+  return (
+    <div>
+      <SectionHeader title="?鼎?????????-07?? count={envRecords.length} color="#14b8a6" />
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <StatCard label="?株???? value={summary.total} color="#14b8a6" />
+        <StatCard label="??僱" value={summary.passed} color="#22c55e" />
+        <StatCard label="???" value={summary.warning} color="#eab308" />
+        <StatCard label="????? value={summary.failed} color="#ef4444" />
+        <StatCard label="??僱?? value={`${passRate}%`} color={passRate>=90?"#22c55e":passRate>=80?"#eab308":"#ef4444"} sub="?獢??剜?蹓??" />
+      </div>
+      <div style={{ background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.2)", borderRadius: 12, padding: 16, marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: "#2dd4bf", fontWeight: 700, marginBottom: 8 }}>Class 1000 ??蜃????/div>
+        <div style={{ display:"flex", gap:24, flexWrap:"wrap", fontSize:12, color:"#64748b" }}>
+          <span>0.5撘峻 ??? ??1000</span>
+          <span>5撘峻 ??? ??35</span>
+          <span>?撞 21??3蝪</span>
+          <span>??瞍?40??0% RH</span>
+          <span>??? ??10 Pa</span>
+        </div>
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:14, flexWrap:"wrap" }}>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+          <input type="date" value={rangeStart} onChange={e => setRangeStart(e.target.value)} style={{ ...inputStyle, width:170 }} />
+          <span style={{ color:"#64748b", fontSize:12 }}>??/span>
+          <input type="date" value={rangeEnd} onChange={e => setRangeEnd(e.target.value)} style={{ ...inputStyle, width:170 }} />
+          <button onClick={() => loadRange()} style={{ background:"rgba(20,184,166,0.14)", border:"1px solid rgba(20,184,166,0.28)", borderRadius:10, color:"#99f6e4", cursor:"pointer", padding:"9px 16px", fontSize:13, fontWeight:700 }}>?鈭亙眺????/button>
+          <button onClick={() => { setRangeStart(""); setRangeEnd(""); loadRange("", ""); }} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, color:"#cbd5e1", cursor:"pointer", padding:"9px 16px", fontSize:13, fontWeight:700 }}>?謒??</button>
+        </div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <label style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>
+            {busy==="import" ? "??謘餉?..." : "??蹌?賹???"}
+            <input type="file" accept=".xlsx,.csv" onChange={e => importFile(e.target.files && e.target.files[0])} style={{ display:"none" }} />
+          </label>
+          <button onClick={deleteRange} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:10, color:"#fca5a5", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>??畸??????/button>
+          <button onClick={() => setShowAdd(true)} style={{ background: "linear-gradient(135deg, #0d9488, #14b8a6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 18px", fontSize:13, fontWeight:700 }}>?????????</button>
+        </div>
+      </div>
+      <div style={{ color:"#99f6e4", fontSize:12, marginBottom:14 }}>{message || "????鈭?????佇??堆撓???畸????????Excel/CSV ????謘??殉朱???}</div>
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+          <thead><tr>{["?箏?","?鈭?","?綜童?","???","0.3撘峻","0.5撘峻","5.0撘峻","?撞","??瞍?,"???","?殉死???,"?荒??",""].map(h => (<th key={h} style={{ textAlign:"left", padding:"8px 10px", color:"#64748b", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.06)", whiteSpace:"nowrap" }}>{h}</th>))}</tr></thead>
+          <tbody>
+            {sorted.map((item,i) => (
+              <tr key={item.id} style={{ background:i%2===0?"rgba(255,255,255,0.02)":"transparent" }}>
+                <td style={{ padding:"8px 10px", color:"#14b8a6", fontFamily:"monospace" }}>{item.id}</td>
+                <td style={{ padding:"8px 10px", color:"#94a3b8", whiteSpace:"nowrap" }}>{formatDate(item.date)}</td>
+                <td style={{ padding:"8px 10px", color:"#94a3b8" }}>{item.point || "??}</td>
+                <td style={{ padding:"8px 10px", color:"#e2e8f0" }}>{item.location}</td>
+                <td style={{ padding:"8px 10px", color:"#94a3b8" }}>{formatMaybeInteger(item.particles03)}</td>
+                <td style={{ padding:"8px 10px", color:item.particles05>1000?"#ef4444":item.particles05>800?"#eab308":"#94a3b8", fontWeight:item.particles05>800?700:400 }}>{formatMaybeInteger(item.particles05)}</td>
+                <td style={{ padding:"8px 10px", color:item.particles5>35?"#ef4444":item.particles5>20?"#eab308":"#94a3b8", fontWeight:item.particles5>20?700:400 }}>{formatMaybeInteger(item.particles5)}</td>
+                <td style={{ padding:"8px 10px", color:item.temp === "" || item.temp === null || item.temp === undefined ? "#64748b" : item.temp>23||item.temp<21?"#ef4444":"#94a3b8" }}>{formatMaybeNumber(item.temp)}</td>
+                <td style={{ padding:"8px 10px", color:item.humidity === "" || item.humidity === null || item.humidity === undefined ? "#64748b" : item.humidity>50||item.humidity<40?"#ef4444":"#94a3b8" }}>{formatMaybeNumber(item.humidity)}</td>
+                <td style={{ padding:"8px 10px", color:item.pressure === "" || item.pressure === null || item.pressure === undefined ? "#64748b" : item.pressure<10?"#ef4444":"#94a3b8" }}>{formatMaybeNumber(item.pressure)}</td>
+                <td style={{ padding:"8px 10px", color:"#94a3b8" }}>{item.operator || "??}</td>
+                <td style={{ padding:"8px 10px" }}><Badge color={resultColor(item.result)}>{item.result}</Badge></td>
+                <td style={{ padding:"8px 10px" }}><button onClick={() => deleteRecord(item.id)} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.28)", borderRadius:8, color:"#fca5a5", cursor:"pointer", padding:"6px 12px", fontSize:11 }}>??畸?</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showAdd && (<Modal title="????????????" onClose={() => setShowAdd(false)}><div style={{ display:"flex", flexDirection:"column", gap:12 }}>{[["?鈭?","date","date"],["??脰?蹇?","measuredAt","datetime-local"],["?綜童?","point","text"],["???","location","text"],["0.3撘峻 ???","particles03","number"],["0.5撘峻 ???","particles05","number"],["5.0撘峻 ???","particles5","number"],["?撞","temp","number"],["??瞍?,"humidity","number"],["???","pressure","number"],["?殉死???,"operator","text"]].map(([label,field,type]) => (<div key={field}><div style={{ fontSize:12, color:"#64748b", marginBottom:5 }}>{label}</div><input type={type} value={draft[field]} onChange={e=>setDraft({...draft,[field]:e.target.value})} style={inputStyle} /></div>))}<button onClick={addRecord} disabled={busy==="save"} style={{ background:"linear-gradient(135deg,#0d9488,#14b8a6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy==="save"?0.6:1 }}>{busy==="save"?"?殉朵???..":"???????"}</button></div></Modal>)}
+      {importPreview.length>0 && (<Modal title="??穿???" onClose={() => { setImportPreview([]); setImportSummary(null); }}><div style={{ display:"flex", flexDirection:"column", gap:12 }}>{importSummary && <div style={{ background:"rgba(20,184,166,0.08)", border:"1px solid rgba(20,184,166,0.24)", borderRadius:8, padding:10, color:"#99f6e4", fontSize:12 }}>?蟡暑????爸importSummary.total} ?????僱 {importSummary.passed}?蹓暸???{importSummary.warning}?蹓???僱 {importSummary.failed}</div>}<div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:12, maxHeight:340, overflowY:"auto" }}>{importPreview.slice(0,20).map(item => (<div key={item.id || item.source_file + item.date} style={{ display:"grid", gridTemplateColumns:"110px 1fr 120px", gap:12, borderBottom:"1px solid rgba(255,255,255,0.05)", padding:"8px 0" }}><span style={{ color:"#5eead4", fontFamily:"monospace", fontSize:12 }}>{formatDate(item.date)}</span><span style={{ color:"#94a3b8", fontSize:12 }}>?綜童? {item.point || "??} 蝜?{item.location} 蝜?0.3撘峻 {formatMaybeInteger(item.particles03)} 蝜?0.5撘峻 {formatMaybeInteger(item.particles05)}</span><span style={{ color:item.missing_fields?.length?"#fde68a":"#cbd5e1", fontSize:12, textAlign:"right" }}>{item.missing_fields?.length ? `????${item.missing_fields.join("/")}` : item.result}</span></div>))}</div><button onClick={confirmImport} disabled={busy==="save"} style={{ background:"linear-gradient(135deg,#0d9488,#14b8a6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:15, fontWeight:700, marginTop:8, opacity:busy==="save"?0.6:1 }}>{busy==="save"?"?殉朵???..":"?????殉朱??}</button></div></Modal>)}
+    </div>
+  );
+}
+
+function ProductionTab({ envRecords, prodRecords, setProdRecords, qualityRecords, setQualityRecords, nonConformances, auditPlans, setActiveTab, setHighlightNcId, setExpandNcId }) {
+  const objectRows = (value) => Array.isArray(value) ? value.filter(item => item && typeof item === "object") : [];
+  const safeEnvRecords = objectRows(envRecords);
+  const safeProdRecords = objectRows(prodRecords);
+  const safeQualityRecords = objectRows(qualityRecords);
+  const safeNonConformances = objectRows(nonConformances);
+  const safeAuditPlans = objectRows(auditPlans);
+  const [downloadType, setDownloadType] = useState("");
+  const [message, setMessage] = useState("");
+  const [shipmentOrders, setShipmentOrders] = useState([]);
+  const [shipmentLoading, setShipmentLoading] = useState(true);
+  const [shipmentBusy, setShipmentBusy] = useState(false);
+  const [shipmentMessage, setShipmentMessage] = useState("");
+  const [shipmentOrderNo, setShipmentOrderNo] = useState("");
+  const [shipmentForm, setShipmentForm] = useState({ date:"", department:"", requester:"", product_name:"", spec:"", quantity:"", unit:"", remark:"", batch_display:"" });
+  const [selectedLots, setSelectedLots] = useState([]);
+  const [engineCatalog, setEngineCatalog] = useState([]);
+  const [engineTemplateCode, setEngineTemplateCode] = useState("shipping_pack");
+  const [enginePrompt, setEnginePrompt] = useState("");
+  const [engineSuggestions, setEngineSuggestions] = useState([]);
+  const [engineBusy, setEngineBusy] = useState(false);
+  const [engineMessage, setEngineMessage] = useState("");
+  const [enginePrecheck, setEnginePrecheck] = useState(null);
+  const [enginePrecheckBusy, setEnginePrecheckBusy] = useState(false);
+  const [selectedNcId, setSelectedNcId] = useState("");
+  const [recordReadBusy, setRecordReadBusy] = useState("");
+  const [prodStartDate, setProdStartDate] = useState("");
+  const [prodEndDate, setProdEndDate] = useState("");
+  const [prodSiteFilter, setProdSiteFilter] = useState("ALL");
+  const [prodSearch, setProdSearch] = useState("");
+  const [expandedProdGroups, setExpandedProdGroups] = useState({});
+  const [qualitySearch, setQualitySearch] = useState("");
+  const [qualityResultFilter, setQualityResultFilter] = useState("ALL");
+  const [expandedQualityGroups, setExpandedQualityGroups] = useState({});
+  const prodSectionRef = useRef(null);
+  const qualitySectionRef = useRef(null);
+  const shipmentSectionRef = useRef(null);
+  const shipmentFieldRefs = {
+    date: useRef(null),
+    department: useRef(null),
+    requester: useRef(null),
+    product_name: useRef(null),
+    quantity: useRef(null),
+    spec: useRef(null),
+    unit: useRef(null),
+    batch_display: useRef(null),
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCatalog() {
+      setShipmentLoading(true);
+      try {
+        const response = await fetch("/api/shipment-draft/catalog");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+        if (!cancelled) {
+          const orders = payload.orders || [];
+          setShipmentOrders(orders);
+          if (orders.length > 0) setShipmentOrderNo(prev => prev || orders[0].order_no);
+        }
+      } catch (err) {
+        if (!cancelled) setShipmentMessage("??謘潘?謘????剜??: " + err.message);
+      } finally {
+        if (!cancelled) setShipmentLoading(false);
+      }
+    }
+    loadCatalog();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRecordEngineCatalog() {
+      try {
+        const response = await fetch("/api/record-engine/catalog");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+        if (!cancelled) {
+          const templates = payload.templates || [];
+          setEngineCatalog(templates);
+          if (templates.length > 0 && !templates.some(item => item.code === engineTemplateCode)) {
+            setEngineTemplateCode(templates[0].code);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) setEngineMessage("??航??????頦嫣??? " + err.message);
+      }
+    }
+    loadRecordEngineCatalog();
+    return () => { cancelled = true; };
+  }, []);
+
+  const [selectedAuditId, setSelectedAuditId] = useState("");
+
+  useEffect(() => {
+    if (!selectedNcId && safeNonConformances.length > 0) {
+      setSelectedNcId(safeNonConformances[0].id);
+    }
+  }, [safeNonConformances, selectedNcId]);
+
+  useEffect(() => {
+    if (!selectedAuditId && safeAuditPlans.length > 0) {
+      setSelectedAuditId(safeAuditPlans[0].id);
+    }
+  }, [safeAuditPlans, selectedAuditId]);
+
+  const selectedOrder = shipmentOrders.find(item => item.order_no === shipmentOrderNo) || null;
+
+  useEffect(() => {
+    if (!selectedOrder) return;
+    setShipmentForm({
+      date: selectedOrder.ship_date_suggested || "",
+      department: selectedOrder.department_suggested || "",
+      requester: selectedOrder.requester_suggested || "",
+      product_name: selectedOrder.product_name_suggested || selectedOrder.source_product || "",
+      spec: selectedOrder.spec_suggested || "",
+      quantity: selectedOrder.quantity_suggested || "",
+      unit: selectedOrder.unit_suggested || "",
+      remark: selectedOrder.remark_suggested || "",
+      batch_display: selectedOrder.batch_display_suggested || selectedOrder.order_no,
+    });
+    setSelectedLots([]);
+    setShipmentMessage("");
+  }, [shipmentOrderNo]);
+
+  function updateProdRecord(index, field, value) {
+    setProdRecords(prev => prev.map((row, i) => {
+      if (i !== index) return row;
+      const next = { ...row, [field]: value };
+      if (field === "input" || field === "good" || field === "defect") {
+        const input = Number(field === "input" ? value : next.input) || 0;
+        const good = Number(field === "good" ? value : next.good) || 0;
+        next.yieldRate = input ? Number((good / input * 100).toFixed(1)) : "";
+      }
+      return next;
+    }));
+  }
+
+  function updateQualityRecord(index, field, value) {
+    setQualityRecords(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
+  }
+
+  function addProdRecord() {
+    setProdRecords(prev => prev.concat({ lot:"LOT-" + String(prev.length + 1).padStart(3, "0"), customer:"", product:"", input:0, good:0, defect:0, yieldRate:"", defectReasons:[], operator:"", note:"" }));
+  }
+
+  function addQualityRecord() {
+    setQualityRecords(prev => prev.concat({ materialName:"", batchNo:"", quantity:"", spec:"", inspQty:"", ph:"", density:"", ri:"", rotation:"", result:"PASS", note:"" }));
+  }
+
+  async function loadExistingRecordData(kind) {
+    const isProduction = kind === "production";
+    const label = isProduction ? "?賹?鈭鼓" : "?蹓暸?潘???殉死?";
+    if (!window.confirm(label + " ??????????嚗嗉???甽?殉此??謕??????秋撫??謘踐?????????)) return;
+    setRecordReadBusy(kind);
+    setMessage("");
+    try {
+      const response = await fetch(isProduction ? "/api/production-records/read-existing" : "/api/quality-records/read-existing");
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      const records = payload.records || [];
+      if (isProduction) setProdRecords(records);
+      else setQualityRecords(records);
+      if (records.length === 0) {
+        setMessage("?獢??????????穿?? + label + "??);
+      } else {
+        const shortPath = payload.source_file ? payload.source_file.split("\\").slice(-3).join("\\") : "";
+        setMessage("????" + records.length + " ?? + label + (shortPath ? "?????" + shortPath : "??));
+      }
+    } catch (err) {
+      setMessage("??? + label + "?剜???? + err.message);
+    } finally {
+      setRecordReadBusy("");
+    }
+  }
+
+  async function importRecordFile(kind) {
+    const isProduction = kind === "production";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".xlsx,.xls";
+    input.onchange = async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      setRecordReadBusy(kind);
+      setMessage("");
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch(
+          isProduction ? "/api/production-records/import" : "/api/quality-records/import",
+          { method: "POST", body: formData }
+        );
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+        const records = payload.records || [];
+        const label = isProduction ? "?賹?鈭鼓" : "?蹓暸?殉死?";
+        if (!records.length) {
+          setMessage("?謕" + label + "?????????穿????謕?);
+          return;
+        }
+        const confirmed = window.confirm(
+          "???? + (payload.source_file || file.name) + "???? " + records.length + " ????謕蹐彫??秋???蜃謕???穿???獢??蹓遴???寞???
+        );
+        if (!confirmed) {
+          setMessage("????????選?????????穿???獢??蹓遴?????);
+          return;
+        }
+        if (isProduction) setProdRecords(records);
+        else setQualityRecords(records);
+        setMessage("????" + records.length + " ?? + label + "???????" + (payload.source_file || file.name));
+      } catch (err) {
+        setMessage("??穿?剜???? + err.message);
+      } finally {
+        setRecordReadBusy("");
+      }
+    };
+    input.click();
+  }
+
+  function buildEnginePayload(overrides = {}) {
+    const selectedNc = safeNonConformances.find(item => item.id === selectedNcId) || safeNonConformances[0] || null;
+    return {
+      template_code: overrides.template_code || engineTemplateCode,
+      prompt: overrides.prompt ?? enginePrompt,
+      env_records: safeEnvRecords,
+      prod_records: safeProdRecords,
+      quality_records: safeQualityRecords,
+      shipment_request: {
+        order_no: shipmentOrderNo,
+        selected_lots: selectedLots,
+        ...shipmentForm,
+      },
+      nonconformance: selectedNc,
+      all_nonconformances: safeNonConformances,
+      audit_plans: safeAuditPlans,
+      selected_audit_id: selectedAuditId,
+    };
+  }
+
+  function applyEngineTemplatePreset(templateCode, prompt, messageText) {
+    setEngineTemplateCode(templateCode);
+    if (typeof prompt === "string") setEnginePrompt(prompt);
+    setEngineSuggestions([]);
+    setEnginePrecheck(null);
+    if (messageText) setEngineMessage(messageText);
+  }
+
+  async function suggestRecordTemplates() {
+    setEngineBusy(true);
+    setEngineMessage("");
+    setEnginePrecheck(null);
+    try {
+      const response = await fetch("/api/record-engine/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: enginePrompt,
+          context: {
+            env_count: envRecords.length,
+            prod_count: prodRecords.length,
+            quality_count: qualityRecords.length,
+            shipment_order_count: shipmentOrders.length,
+            nonconformance_count: safeNonConformances.length,
+          },
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      const templates = payload.templates || [];
+      setEngineSuggestions(templates.slice(0, 4));
+      if (templates.length > 0) {
+        setEngineTemplateCode(templates[0].code);
+        setEngineMessage("????獢???????謕????蹍????豰??);
+      } else {
+        setEngineMessage("?獢????????銵??豰??);
+      }
+    } catch (err) {
+      setEngineMessage("????梁????: " + err.message);
+    } finally {
+      setEngineBusy(false);
+    }
+  }
+
+  async function precheckRecordTemplate(overrides = null) {
+    setEnginePrecheckBusy(true);
+    setEngineMessage("");
+    try {
+      const response = await fetch("/api/record-engine/precheck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildEnginePayload(overrides || {})),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      const result = payload.result || null;
+      setEnginePrecheck(result);
+      if (result && result.ready) {
+        setEngineMessage("????堆??垓謆????謕?漲??賹??葩??);
+      } else if (result) {
+        setEngineMessage("????堆??奕???????????選???);
+      } else {
+        setEngineMessage("????堆???????謘??荒????);
+      }
+    } catch (err) {
+      setEngineMessage("????剜??: " + err.message);
+    } finally {
+      setEnginePrecheckBusy(false);
+    }
+  }
+
+  async function generateEngineRecord(overrides = null) {
+    const effectiveTemplateCode = (overrides && overrides.template_code) || engineTemplateCode;
+    if (!overrides && enginePrecheck && enginePrecheck.ready === false) {
+      setEngineMessage("?獢?????對?萇??????????ｇ??????潘撕??謚??瞏汕?);
+      return;
+    }
+    setEngineBusy(true);
+    setEngineMessage("");
+    try {
+      const response = await fetch("/api/record-engine/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildEnginePayload(overrides || {})),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || ("HTTP " + response.status));
+      }
+      const selectedTemplate = engineCatalog.find(item => item.code === effectiveTemplateCode);
+      const fallbackName = selectedTemplate ? (selectedTemplate.title + (selectedTemplate.bundle ? ".zip" : ".xlsx")) : "??????xlsx";
+      downloadBlob(await response.blob(), fallbackName);
+      setEngineMessage("????" + (selectedTemplate ? selectedTemplate.title : "??????) + "??);
+    } catch (err) {
+      setEngineMessage("?嚗??????? " + err.message);
+    } finally {
+      setEngineBusy(false);
+    }
+  }
+
+  function jumpToMissingDetail(detail) {
+    if (!detail || typeof window === "undefined") return;
+    const focusField = (refObject) => {
+      const el = refObject && refObject.current;
+      if (!el) return false;
+      el.focus();
+      if (typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return true;
+    };
+
+    const scrollToRef = (refObject) => {
+      const el = refObject && refObject.current;
+      if (!el || typeof el.scrollIntoView !== "function") return false;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return true;
+    };
+
+    if (detail.scope === "production") {
+      scrollToRef(prodSectionRef);
+      setEngineMessage("???選???賹?撖暑??????ｇ???骨??賹????);
+      return;
+    }
+    if (detail.scope === "quality") {
+      scrollToRef(qualitySectionRef);
+      setEngineMessage("???選??????潘????????ｇ???骨??蹓暸????);
+      return;
+    }
+    if (detail.scope === "shipment") {
+      scrollToRef(shipmentSectionRef);
+      const fieldRef = shipmentFieldRefs[detail.field_key];
+      if (fieldRef) {
+        setTimeout(() => focusField(fieldRef), 120);
+      }
+      setEngineMessage("???選???蝞?????葭??選?" + (detail.label || detail.field_key));
+      return;
+    }
+    if (detail.scope === "nonconformance") {
+      setActiveTab("nonconformance");
+      const targetId = detail.item_id || selectedNcId;
+      if (targetId) {
+        setHighlightNcId(targetId);
+        setExpandNcId?.(targetId);
+      }
+      setEngineMessage("???謜???瘜??????ｇ?????? + (detail.label || detail.field_key || "?對????") + "???);
+      return;
+    }
+    if (detail.scope === "environment") {
+      if (ENABLE_ENVIRONMENT_MODULE) {
+        setActiveTab("environment");
+        setEngineMessage("???謜??鼎?????????????????謆????謕?);
+      } else {
+        setActiveTab("production");
+        setEngineMessage("??肅?謆????輯撒???????怎??????憳???賹?蹓???蹓賡??鞊???瘜????謕冪?０??);
+      }
+      return;
+    }
+    if (detail.scope === "audit_plans") {
+      setActiveTab("auditplan");
+      setEngineMessage("???謜??都赯梢????乾??? + (detail.label || detail.field_key || "?對????") + "???);
+      return;
+    }
+  }
+
+  async function downloadRecords(type, data, fallbackName) {
+    setDownloadType(type);
+    setMessage("");
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, data }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || ("HTTP " + response.status));
+      }
+      downloadBlob(await response.blob(), fallbackName);
+      setMessage("?????" + fallbackName);
+    } catch (err) {
+      setMessage("????剜??: " + err.message);
+    } finally {
+      setDownloadType("");
+    }
+  }
+
+  async function generateShipmentDraft() {
+    if (!shipmentOrderNo) {
+      setShipmentMessage("?ｇ???鞊??殉?謘??);
+      return;
+    }
+    setShipmentBusy(true);
+    setShipmentMessage("");
+    try {
+      const response = await fetch("/api/shipment-draft/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_no: shipmentOrderNo, selected_lots: selectedLots, ...shipmentForm }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || ("HTTP " + response.status));
+      }
+      downloadBlob(await response.blob(), shipmentOrderNo + "_?蝞??????xlsx");
+      setShipmentMessage("???賹?謘??仿??);
+    } catch (err) {
+      setShipmentMessage("?蝞?????撒??賹??? " + err.message);
+    } finally {
+      setShipmentBusy(false);
+    }
+  }
+
+  const prodIncomplete = safeProdRecords.filter(row => getProdRowIssues(row).length > 0).length;
+  const qualityNg = safeQualityRecords.filter(row => ["NG", "FAIL"].includes(String(row?.result || "").toUpperCase())).length;
+  const envWarning = safeEnvRecords.filter(row => row.result && row.result !== "??僱").length;
+
+  const normalizeDateText = (value) => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+    const normalized = source.replace(/\//g, "-");
+    const match = normalized.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (match) {
+      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+    }
+    return normalized;
+  };
+
+  const extractProdSite = (row) => {
+    const note = String(row?.note || "");
+    const siteMatch = note.match(/site\s*:\s*([a-z0-9_-]+)/i);
+    if (siteMatch) return siteMatch[1].toUpperCase();
+    const lot = String(row?.lot || "");
+    const lotMatch = lot.match(/([A-Z]{2,5})$/);
+    if (lotMatch) return lotMatch[1].toUpperCase();
+    return "??詹菔謕?";
+  };
+
+  const getProdRowIssues = (row) => {
+    const issues = [];
+    if (!String(row?.lot || "").trim()) issues.push("?撖?");
+    if (!String(row?.customer || "").trim()) issues.push("?堆撓??);
+    if (!String(row?.product || "").trim()) issues.push("?嚗?");
+    if (!(Number(row?.input) > 0)) issues.push("????);
+    if (!String(row?.operator || "").trim()) issues.push("?遴鬥撟??);
+    return issues;
+  };
+
+  const prodRows = safeProdRecords.map((row, index) => ({
+    row,
+    index,
+    normalizedDate: normalizeDateText(row.date || row.recordDate || row.created_at || ""),
+    site: extractProdSite(row),
+  }));
+
+  const prodSiteOptions = Array.from(new Set(prodRows.map(item => item.site))).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  const prodDateOptions = Array.from(new Set(prodRows.map(item => item.normalizedDate).filter(Boolean))).sort();
+  const prodSearchKeyword = prodSearch.trim().toLowerCase();
+  const filteredProdRows = prodRows.filter(({ row, normalizedDate, site }) => {
+    if ((prodStartDate || prodEndDate) && !normalizedDate) return false;
+    if (prodStartDate && normalizedDate < prodStartDate) return false;
+    if (prodEndDate && normalizedDate > prodEndDate) return false;
+    if (prodSiteFilter !== "ALL" && site !== prodSiteFilter) return false;
+    if (!prodSearchKeyword) return true;
+    const haystack = [
+      row.lot,
+      row.customer,
+      row.product,
+      row.operator,
+      row.note,
+      site,
+    ].join(" ").toLowerCase();
+    return haystack.includes(prodSearchKeyword);
+  });
+
+  const prodGroups = filteredProdRows.reduce((acc, item) => {
+    const dateLabel = item.normalizedDate || "??詹?鈭?";
+    const key = `${dateLabel}__${item.site}`;
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        date: dateLabel,
+        site: item.site,
+        items: [],
+        totalInput: 0,
+        totalGood: 0,
+        totalDefect: 0,
+        issueCount: 0,
+      };
+    }
+    acc[key].items.push(item);
+    acc[key].totalInput += Number(item.row.input) || 0;
+    acc[key].totalGood += Number(item.row.good) || 0;
+    acc[key].totalDefect += Number(item.row.defect) || 0;
+    acc[key].issueCount += getProdRowIssues(item.row).length > 0 ? 1 : 0;
+    return acc;
+  }, {});
+
+  const prodGroupList = Object.values(prodGroups)
+    .map(group => ({
+      ...group,
+      avgYield: group.totalInput ? Number(((group.totalGood / group.totalInput) * 100).toFixed(1)) : 0,
+    }))
+    .sort((a, b) => `${b.date} ${b.site}`.localeCompare(`${a.date} ${a.site}`));
+
+  const latestProdDate = prodDateOptions.length ? prodDateOptions[prodDateOptions.length - 1] : "";
+
+  const setProdPresetRange = (preset) => {
+    if (!prodDateOptions.length) return;
+    if (preset === "all") {
+      setProdStartDate("");
+      setProdEndDate("");
+      return;
+    }
+    if (preset === "latest") {
+      setProdStartDate(latestProdDate);
+      setProdEndDate(latestProdDate);
+      return;
+    }
+    const days = preset === "7d" ? 7 : 30;
+    const latest = new Date(`${latestProdDate}T00:00:00`);
+    if (Number.isNaN(latest.getTime())) return;
+    const start = new Date(latest);
+    start.setDate(start.getDate() - (days - 1));
+    const fmt = (value) => {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    setProdStartDate(fmt(start));
+    setProdEndDate(latestProdDate);
+  };
+
+  const toggleProdGroup = (key) => {
+    setExpandedProdGroups(prev => ({ ...prev, [key]: !(prev[key] ?? false) }));
+  };
+
+  const toggleAllProdGroups = (expanded) => {
+    const next = {};
+    prodGroupList.forEach(group => {
+      next[group.key] = expanded;
+    });
+    setExpandedProdGroups(next);
+  };
+
+  const getQualityRowIssues = (row) => {
+    const issues = [];
+    if (!String(row?.materialName || "").trim()) issues.push("??????");
+    if (!String(row?.batchNo || "").trim()) issues.push("?撖?");
+    if (!String(row?.spec || "").trim()) issues.push("?秋赯?);
+    if (!String(row?.result || "").trim()) issues.push("?荒??");
+    return issues;
+  };
+
+  const qualityRows = safeQualityRecords.map((row, index) => ({
+    row,
+    index,
+    materialName: String(row.materialName || "??詹???").trim() || "??詹???",
+    resultLabel: String(row.result || "??賂???).trim() || "??賂???,
+    normalizedResult: (String(row.result || "").trim() || "??賂???).toUpperCase(),
+  }));
+
+  const qualitySearchKeyword = qualitySearch.trim().toLowerCase();
+  const normalizedQualityFilter = String(qualityResultFilter || "ALL").toUpperCase();
+  const filteredQualityRows = qualityRows.filter(({ row, materialName, resultLabel, normalizedResult }) => {
+    if (normalizedQualityFilter !== "ALL" && normalizedResult !== normalizedQualityFilter) return false;
+    if (!qualitySearchKeyword) return true;
+    const haystack = [
+      materialName,
+      row.batchNo,
+      row.spec,
+      row.note,
+      resultLabel,
+    ].join(" ").toLowerCase();
+    return haystack.includes(qualitySearchKeyword);
+  });
+
+  const qualityGroups = filteredQualityRows.reduce((acc, item) => {
+    if (!acc[item.materialName]) {
+      acc[item.materialName] = {
+        key: item.materialName,
+        materialName: item.materialName,
+        items: [],
+        ngCount: 0,
+        issueCount: 0,
+      };
+    }
+    acc[item.materialName].items.push(item);
+    if (["NG", "FAIL"].includes(item.resultLabel.toUpperCase())) acc[item.materialName].ngCount += 1;
+    if (getQualityRowIssues(item.row).length > 0) acc[item.materialName].issueCount += 1;
+    return acc;
+  }, {});
+
+  const qualityGroupList = Object.values(qualityGroups).sort((a, b) => a.materialName.localeCompare(b.materialName, "zh-Hant"));
+  const filteredQualityNg = filteredQualityRows.filter(item => ["NG", "FAIL"].includes(item.resultLabel.toUpperCase())).length;
+
+  const toggleQualityGroup = (key) => {
+    setExpandedQualityGroups(prev => ({ ...prev, [key]: !(prev[key] ?? false) }));
+  };
+
+  const toggleAllQualityGroups = (expanded) => {
+    const next = {};
+    qualityGroupList.forEach(group => {
+      next[group.key] = expanded;
+    });
+    setExpandedQualityGroups(next);
+  };
+
+  const getShipmentFormIssues = () => {
+    const issues = [];
+    if (!String(shipmentForm.date || "").trim()) issues.push("?鈭?");
+    if (!String(shipmentForm.department || "").trim()) issues.push("???");
+    if (!String(shipmentForm.requester || "").trim()) issues.push("?????);
+    if (!String(shipmentForm.product_name || "").trim()) issues.push("?嚗?");
+    if (!String(shipmentForm.quantity || "").trim()) issues.push("?鞈?");
+    return issues;
+  };
+
+  const shipmentIssues = getShipmentFormIssues();
+  const shipmentSuggestions = [];
+  if (!String(shipmentForm.spec || "").trim()) shipmentSuggestions.push("?秋赯?);
+  if (!String(shipmentForm.unit || "").trim()) shipmentSuggestions.push("?獢?");
+  if (!String(shipmentForm.batch_display || "").trim()) shipmentSuggestions.push("?殉?謘?? / ?撖??輯???);
+  const shipmentLots = selectedOrder && Array.isArray(selectedOrder.lots) ? selectedOrder.lots : [];
+  const selectedLotCount = selectedLots.length;
+  const shipmentSummaryCardStyle = {
+    background: "rgba(15,23,42,0.72)",
+    border: "1px solid rgba(167,139,250,0.18)",
+    borderRadius: 14,
+    boxShadow: "0 16px 36px rgba(15,23,42,0.16)",
+    padding: 14,
+  };
+  const selectedEngineTemplate = engineCatalog.find(item => item.code === engineTemplateCode) || null;
+  const managementReviewPrompt = "?ｇ????肅?謆????賹?蹓???蹓賡??鞎???瘜????謕??嚗? 16 ?????貔?蹓???倦?;
+  const completedAuditCount = safeAuditPlans.filter(item => ["????, "?堆?", "Closed"].includes(String(item.status || "").trim())).length;
+  const openNonConformanceCount = safeNonConformances.filter(item => !["????, "????, "Closed"].includes(String(item.status || "").trim())).length;
+  const latestEnvRecordDate = safeEnvRecords.reduce((latest, item) => {
+    const value = String(item.date || "").trim();
+    return value && value > latest ? value : latest;
+  }, "");
+  const latestProdRecordDate = safeProdRecords.reduce((latest, item) => {
+    const value = String(item.date || "").trim();
+    return value && value > latest ? value : latest;
+  }, "");
+  const latestQualityRecordDate = safeQualityRecords.reduce((latest, item) => {
+    const value = String(item.date || item.inspectDate || item.createdDate || "").trim();
+    return value && value > latest ? value : latest;
+  }, "");
+  const managementReviewSources = [
+    { label: "?賹?撖暑", value: safeProdRecords.length, color: "#38bdf8", sub: latestProdRecordDate ? "??擗謑??" + formatDate(latestProdRecordDate) : "?垮謓舫???謘??嚗賃??? },
+    { label: "????潘??", value: safeQualityRecords.length, color: "#22c55e", sub: latestQualityRecordDate ? "??擗謑??" + formatDate(latestQualityRecordDate) : "?垮謓舫???謘????? },
+    { label: "?都赯梢?", value: safeAuditPlans.length, color: "#a78bfa", sub: completedAuditCount > 0 ? "????" + completedAuditCount + " ?? : "?垓????都赯? },
+    { label: "??瘜??, value: safeNonConformances.length, color: "#f97316", sub: openNonConformanceCount > 0 ? "?綽?剝?" + openNonConformanceCount + " ?? : "?獢????擗釭擐? },
+  ].filter(Boolean);
+
+  return (
+    <div>
+      <PageIntro
+        eyebrow="QMS Record Workspace"
+        title="?殉死???穿"
+        description="?謕??蹓????????嚗肅蹓????蝞??鞈??殉死??蹇???剛?????謘踐???方縣???謕?????箸??蹓鳴??蝬??謘餅摹?航﹝??????????蝞?????葩??
+        actions={
+          <>
+            <button onClick={() => downloadRecords("production", prodRecords, "?賹?殉死?.xlsx")} disabled={downloadType !== ""} style={buttonStyle("primary", downloadType !== "" && downloadType !== "production")}>{downloadType === "production" ? "?????.." : "????賹?殉死?"}</button>
+            <button onClick={() => downloadRecords("quality", qualityRecords, "?蹓暸?潘???殉死?.xlsx")} disabled={downloadType !== ""} style={buttonStyle("success", downloadType !== "" && downloadType !== "quality")}>{downloadType === "quality" ? "?????.." : "????蹓暸?潘???殉死?"}</button>
+          </>
+        }
+      >
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <StatCard label="?賹?殉死?" value={safeProdRecords.length} color="#38bdf8" sub={prodIncomplete > 0 ? prodIncomplete + " ?摮??鬥??? : "??????} />
+          <StatCard label="????潘??" value={safeQualityRecords.length} color="#22c55e" sub={qualityNg > 0 ? qualityNg + " ?撖抆?? : "??賂??僱"} />
+        </div>
+        {message && <div style={{ marginTop:14, fontSize:12, color:"#bae6fd" }}>{message}</div>}
+      </PageIntro>
+
+      <div ref={prodSectionRef}>
+      <Panel
+        title="?賹?撖暑"
+        description="????鈭??蹓??綜筆??謚殷?殉??祆?????????????鈭??嚗賂???蹇???剛???謘踐?????嚗賃???蹓鳴??鈭止??澗?????皝??箏?冽?綽??蝞??嚗????
+        accent="#38bdf8"
+        actions={
+          <>
+            <button onClick={() => loadExistingRecordData("production")} disabled={recordReadBusy !== ""} style={buttonStyle("secondary", recordReadBusy !== "" && recordReadBusy !== "production")}>{recordReadBusy === "production" ? "??謘餉?..." : "??謘踐?????嚗賃???}</button>
+            <button onClick={() => importRecordFile("production")} disabled={recordReadBusy !== ""} style={buttonStyle("secondary", recordReadBusy !== "" && recordReadBusy !== "production")}>{recordReadBusy === "production" ? "??穿??.." : "??穿?賹?鈭鼓"}</button>
+            <button onClick={addProdRecord} style={buttonStyle("primary")}>?????/button>
+          </>
+        }
+        style={{ marginBottom: 20 }}
+      >
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(180px, 1fr))", gap:12, marginBottom:14 }}>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>????鈭?</div>
+            <input type="date" value={prodStartDate} onChange={e => setProdStartDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?荒???鈭?</div>
+            <input type="date" value={prodEndDate} onChange={e => setProdEndDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?∵??</div>
+            <select value={prodSiteFilter} onChange={e => setProdSiteFilter(e.target.value)} style={inputStyle}>
+              <option value="ALL">??賂貉謕?</option>
+              {prodSiteOptions.map(site => <option key={site} value={site}>{site}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?謚殷??/div>
+            <input value={prodSearch} onChange={e => setProdSearch(e.target.value)} placeholder="???????貔螞蹓餅??蹓踐?蹓嗽蹓??綜等??遴鬥撟?? style={inputStyle} />
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <button onClick={() => setProdPresetRange("latest")} style={buttonStyle("secondary")}>???????/button>
+          <button onClick={() => setProdPresetRange("7d")} style={buttonStyle("secondary")}>??擗?7 ??/button>
+          <button onClick={() => setProdPresetRange("30d")} style={buttonStyle("secondary")}>??擗?30 ??/button>
+          <button onClick={() => setProdPresetRange("all")} style={buttonStyle("secondary")}>?謒?鈭?</button>
+          <button onClick={() => toggleAllProdGroups(true)} style={buttonStyle("secondary")}>??賂豢???</button>
+          <button onClick={() => toggleAllProdGroups(false)} style={buttonStyle("secondary")}>??賂???</button>
+        </div>
+
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
+          <Badge color="#38bdf8">{filteredProdRows.length} ???駁謘???/Badge>
+          <Badge color="#22c55e">{prodGroupList.length} ?????/ ?∵???Ｘ?</Badge>
+          <Badge color={filteredProdRows.filter(item => getProdRowIssues(item.row).length > 0).length > 0 ? "#f59e0b" : "#22c55e"}>
+            {filteredProdRows.filter(item => getProdRowIssues(item.row).length > 0).length} ????鬥???
+          </Badge>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {prodGroupList.length === 0 && (
+            <div style={{ ...tableShellStyle, padding:18, color:"#94a3b8", fontSize:13 }}>
+              ?獢????????剜?蹓?豲麾????嚗??謕蹇???剛????皝??貔螞蹓??綜等??謚殷?殉不??謘???謘踐?????嚗賃????
+            </div>
+          )}
+
+          {prodGroupList.map(group => (
+            <div key={group.key} style={{ ...tableShellStyle, overflow:"hidden" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", alignItems:"center", padding:"14px 16px", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <div style={{ fontSize:18, fontWeight:800, color:"#e2e8f0" }}>{group.date} / {group.site}</div>
+                  <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>
+                    {group.items.length} ????? {group.totalInput}??????皜∵?
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                  {group.issueCount > 0 && <Badge color="#f59e0b">{group.issueCount} ????鬥???/Badge>}
+                  <button onClick={() => toggleProdGroup(group.key)} style={buttonStyle("secondary")}>
+                    {(expandedProdGroups[group.key] ?? true) ? "?????" : "????"}
+                  </button>
+                </div>
+              </div>
+
+              {(expandedProdGroups[group.key] ?? true) && (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", minWidth:900 }}>
+                    <thead><tr>{["?撖?","?堆撓??,"?嚗?","????,"?????,"?????,"????賹?","?遴鬥撟??,"?謕?",""].map(head => <th key={head} style={tableHeadCellStyle}>{head}</th>)}</tr></thead>
+                    <tbody>
+                      {group.items.map(({ row, index }) => {
+                        const issues = getProdRowIssues(row);
+                        const issueSet = new Set(issues);
+                        const flaggedStyle = (label) => issueSet.has(label)
+                          ? { ...inputStyle, borderColor:"rgba(245,158,11,0.55)", background:"rgba(245,158,11,0.08)" }
+                          : inputStyle;
+                        return (
+                          <tr key={(row.lot || "LOT") + "-" + index}>
+                            <td style={tableRowCellStyle}><input value={row.lot} onChange={e => updateProdRecord(index, "lot", e.target.value)} style={flaggedStyle("?撖?")} /></td>
+                            <td style={tableRowCellStyle}><input value={row.customer} onChange={e => updateProdRecord(index, "customer", e.target.value)} style={flaggedStyle("?堆撓??)} /></td>
+                            <td style={tableRowCellStyle}><input value={row.product} onChange={e => updateProdRecord(index, "product", e.target.value)} style={flaggedStyle("?嚗?")} /></td>
+                            <td style={tableRowCellStyle}><input type="number" value={row.input} onChange={e => updateProdRecord(index, "input", e.target.value)} style={flaggedStyle("????)} /></td>
+                            <td style={tableRowCellStyle}><input type="number" value={row.good} onChange={e => updateProdRecord(index, "good", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input type="number" value={row.defect} onChange={e => updateProdRecord(index, "defect", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={Array.isArray(row.defectReasons) ? row.defectReasons.join(", ") : row.defectReasons} onChange={e => updateProdRecord(index, "defectReasons", e.target.value.split(/[;,]/).map(item => item.trim()).filter(Boolean))} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.operator} onChange={e => updateProdRecord(index, "operator", e.target.value)} style={flaggedStyle("?遴鬥撟??)} /></td>
+                            <td style={tableRowCellStyle}><input value={row.note} onChange={e => updateProdRecord(index, "note", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}>
+                              <div style={{ display:"flex", flexDirection:"column", gap:6, alignItems:"flex-start" }}>
+                                <button onClick={() => setProdRecords(prev => prev.filter((_, i) => i !== index))} style={buttonStyle("danger")}>??畸?</button>
+                                {issues.length > 0 && <span style={{ fontSize:11, color:"#fcd34d" }}>?綽??爸issues.join(" / ")}</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Panel>
+      </div>
+
+      <div ref={qualitySectionRef}>
+      <Panel
+        title="????潘??"
+        description="????謚殷?殉???荒???格???哨?????鈭??伍????謕??潘???荒???蹇???剛???謘踐????????蹓鳴??鈭止??澗?????皝??高?瞉???穿??
+        accent="#22c55e"
+        actions={
+          <>
+            <button onClick={() => loadExistingRecordData("quality")} disabled={recordReadBusy !== ""} style={buttonStyle("secondary", recordReadBusy !== "" && recordReadBusy !== "quality")}>{recordReadBusy === "quality" ? "??謘餉?..." : "??謘踐????????}</button>
+            <button onClick={() => importRecordFile("quality")} disabled={recordReadBusy !== ""} style={buttonStyle("secondary", recordReadBusy !== "" && recordReadBusy !== "quality")}>{recordReadBusy === "quality" ? "??穿??.." : "??穿?蹓暸?殉死?"}</button>
+            <button onClick={addQualityRecord} style={buttonStyle("success")}>?????/button>
+          </>
+        }
+        style={{ marginBottom: 20 }}
+      >
+        <div style={{ display:"grid", gridTemplateColumns:"minmax(240px, 2fr) minmax(180px, 1fr)", gap:12, marginBottom:14 }}>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?謚殷??/div>
+            <input value={qualitySearch} onChange={e => setQualitySearch(e.target.value)} placeholder="???????謕????蹓潘?貔螞蹓??瞏??荒??" style={inputStyle} />
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginBottom:6 }}>?荒??</div>
+            <select value={qualityResultFilter} onChange={e => setQualityResultFilter(e.target.value)} style={inputStyle}>
+              <option value="ALL">??賂貉??</option>
+              <option value="PASS">PASS</option>
+              <option value="NG">NG</option>
+              <option value="FAIL">FAIL</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <button onClick={() => setQualitySearch("")} style={buttonStyle("secondary")}>?謒?謚殷??/button>
+          <button onClick={() => setQualityResultFilter("ALL")} style={buttonStyle("secondary")}>??賂貉??</button>
+          <button onClick={() => toggleAllQualityGroups(true)} style={buttonStyle("secondary")}>??賂豢???</button>
+          <button onClick={() => toggleAllQualityGroups(false)} style={buttonStyle("secondary")}>??賂???</button>
+        </div>
+
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
+          <Badge color="#22c55e">{filteredQualityRows.length} ???謅???/Badge>
+          <Badge color="#38bdf8">{qualityGroupList.length} ????謕???/Badge>
+          <Badge color={filteredQualityNg > 0 ? "#ef4444" : "#22c55e"}>{filteredQualityNg} ???芣?/Badge>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {qualityGroupList.length === 0 && (
+            <div style={{ ...tableShellStyle, padding:18, color:"#94a3b8", fontSize:13 }}>
+              ?獢????????剜?蹓?豲麾?????謅??謕蹇???剛????皝????????謚??謘???謘踐?????????
+            </div>
+          )}
+
+          {qualityGroupList.map(group => (
+            <div key={group.key} style={{ ...tableShellStyle, overflow:"hidden" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", alignItems:"center", padding:"14px 16px", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+                <div>
+                  <div style={{ fontSize:18, fontWeight:800, color:"#e2e8f0" }}>{group.materialName}</div>
+                  <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>
+                    {group.items.length} ?????∟????? {group.ngCount} ??
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                  {group.issueCount > 0 && <Badge color="#f59e0b">{group.issueCount} ????鬥???/Badge>}
+                  <Badge color={group.ngCount > 0 ? "#ef4444" : "#22c55e"}>{group.ngCount > 0 ? "??伍?? : "?獢?????}</Badge>
+                  <button onClick={() => toggleQualityGroup(group.key)} style={buttonStyle("secondary")}>
+                    {(expandedQualityGroups[group.key] ?? true) ? "?????" : "????"}
+                  </button>
+                </div>
+              </div>
+
+              {(expandedQualityGroups[group.key] ?? true) && (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1080 }}>
+                    <thead><tr>{["??????","?撖?","?鞈?","?秋赯?,"?潘???鞈?","PH","?伍??","RI","?????,"?荒??","?謕?",""].map(head => <th key={head} style={tableHeadCellStyle}>{head}</th>)}</tr></thead>
+                    <tbody>
+                      {group.items.map(({ row, index }) => {
+                        const issues = getQualityRowIssues(row);
+                        const issueSet = new Set(issues);
+                        const flaggedStyle = (label) => issueSet.has(label)
+                          ? { ...inputStyle, borderColor:"rgba(245,158,11,0.55)", background:"rgba(245,158,11,0.08)" }
+                          : inputStyle;
+                        return (
+                          <tr key={(row.batchNo || row.materialName || "QUALITY") + "-" + index}>
+                            <td style={tableRowCellStyle}><input value={row.materialName} onChange={e => updateQualityRecord(index, "materialName", e.target.value)} style={flaggedStyle("??????")} /></td>
+                            <td style={tableRowCellStyle}><input value={row.batchNo} onChange={e => updateQualityRecord(index, "batchNo", e.target.value)} style={flaggedStyle("?撖?")} /></td>
+                            <td style={tableRowCellStyle}><input value={row.quantity} onChange={e => updateQualityRecord(index, "quantity", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.spec} onChange={e => updateQualityRecord(index, "spec", e.target.value)} style={flaggedStyle("?秋赯?)} /></td>
+                            <td style={tableRowCellStyle}><input value={row.inspQty} onChange={e => updateQualityRecord(index, "inspQty", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.ph} onChange={e => updateQualityRecord(index, "ph", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.density} onChange={e => updateQualityRecord(index, "density", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.ri} onChange={e => updateQualityRecord(index, "ri", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.rotation} onChange={e => updateQualityRecord(index, "rotation", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}><input value={row.result} onChange={e => updateQualityRecord(index, "result", e.target.value)} style={flaggedStyle("?荒??")} /></td>
+                            <td style={tableRowCellStyle}><input value={row.note} onChange={e => updateQualityRecord(index, "note", e.target.value)} style={inputStyle} /></td>
+                            <td style={tableRowCellStyle}>
+                              <div style={{ display:"flex", flexDirection:"column", gap:6, alignItems:"flex-start" }}>
+                                <button onClick={() => setQualityRecords(prev => prev.filter((_, i) => i !== index))} style={buttonStyle("danger")}>??畸?</button>
+                                {issues.length > 0 && <span style={{ fontSize:11, color:"#fcd34d" }}>?綽??爸issues.join(" / ")}</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Panel>
+      </div>
+
+      <div ref={shipmentSectionRef}>
+      <Panel
+        title="?蝞?????撒???
+        description="????????? LOT ???嚗瘀 14.3 ?蝞?????葩?蹇謕????????????謕???蹓鳴???????
+        accent="#a78bfa"
+        actions={<Badge color="#a78bfa">{shipmentLoading ? "??舫?? : shipmentOrders.length + " ?????}</Badge>}
+      >
+
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <Badge color="#a78bfa">{shipmentOrderNo ? "?蹓蹇?" : "?垮謓?鞎???}</Badge>
+          <Badge color="#38bdf8">{shipmentLots.length} ????LOT</Badge>
+          <Badge color="#14b8a6">{selectedLotCount} ?????賃? LOT</Badge>
+          <Badge color={shipmentIssues.length ? "#f97316" : "#22c55e"}>{shipmentIssues.length ? shipmentIssues.length + " ??????? : "?對?萇????堆??}</Badge>
+        </div>
+
+        {selectedOrder && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginBottom:14 }}>
+            <div style={shipmentSummaryCardStyle}>
+              <div style={{ fontSize:11, letterSpacing:1.1, color:"#c4b5fd", marginBottom:6 }}>?獢??殉?謘?/div>
+              <div style={{ fontSize:16, fontWeight:700, color:"#f5f3ff" }}>{selectedOrder.order_no}</div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginTop:4 }}>{selectedOrder.product_name_suggested || selectedOrder.source_product || "??賃?????}</div>
+            </div>
+            <div style={shipmentSummaryCardStyle}>
+              <div style={{ fontSize:11, letterSpacing:1.1, color:"#c4b5fd", marginBottom:6 }}>?梁???蝞?</div>
+              <div style={{ fontSize:16, fontWeight:700, color:"#f5f3ff" }}>{selectedOrder.ship_date_suggested || "?????}</div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginTop:4 }}>?鞈? {selectedOrder.quantity_suggested || "?????} {selectedOrder.unit_suggested || ""}</div>
+            </div>
+            <div style={shipmentSummaryCardStyle}>
+              <div style={{ fontSize:11, letterSpacing:1.1, color:"#c4b5fd", marginBottom:6 }}>??????</div>
+              <div style={{ fontSize:13, color:shipmentIssues.length ? "#fdba74" : "#86efac", fontWeight:600 }}>
+                {shipmentIssues.length ? "?綽??? + shipmentIssues.join(" / ") : "?對?萇???????}
+              </div>
+              {shipmentSuggestions.length > 0 && (
+                <div style={{ fontSize:12, color:"#cbd5e1", marginTop:6 }}>?梁???謚??爸shipmentSuggestions.join(" / ")}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:12 }}>
+          <div>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?殉?謘?/div>
+            <select value={shipmentOrderNo} onChange={e => setShipmentOrderNo(e.target.value)} style={inputStyle}>
+              <option value="">?ｇ蹓?????/option>
+              {shipmentOrders.map(item => <option key={item.order_no} value={item.order_no}>{item.order_no} - {item.product_name_suggested || item.source_product || "??賃???}</option>)}
+            </select>
+          </div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?鈭?</div><input ref={shipmentFieldRefs.date} type="date" value={shipmentForm.date} onChange={e => setShipmentForm(prev => ({ ...prev, date:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentIssues.includes("?鈭?") ? "rgba(249,115,22,0.8)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>???</div><input ref={shipmentFieldRefs.department} value={shipmentForm.department} onChange={e => setShipmentForm(prev => ({ ...prev, department:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentIssues.includes("???") ? "rgba(249,115,22,0.8)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?????/div><input ref={shipmentFieldRefs.requester} value={shipmentForm.requester} onChange={e => setShipmentForm(prev => ({ ...prev, requester:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentIssues.includes("?????) ? "rgba(249,115,22,0.8)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?嚗?</div><input ref={shipmentFieldRefs.product_name} value={shipmentForm.product_name} onChange={e => setShipmentForm(prev => ({ ...prev, product_name:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentIssues.includes("?嚗?") ? "rgba(249,115,22,0.8)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?秋赯?/div><input ref={shipmentFieldRefs.spec} value={shipmentForm.spec} onChange={e => setShipmentForm(prev => ({ ...prev, spec:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentSuggestions.includes("?秋赯?) ? "rgba(56,189,248,0.45)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?鞈?</div><input ref={shipmentFieldRefs.quantity} value={shipmentForm.quantity} onChange={e => setShipmentForm(prev => ({ ...prev, quantity:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentIssues.includes("?鞈?") ? "rgba(249,115,22,0.8)" : inputStyle.borderColor }} /></div>
+          <div><div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?獢?</div><input ref={shipmentFieldRefs.unit} value={shipmentForm.unit} onChange={e => setShipmentForm(prev => ({ ...prev, unit:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentSuggestions.includes("?獢?") ? "rgba(56,189,248,0.45)" : inputStyle.borderColor }} /></div>
+        </div>
+
+        <div style={{ marginTop:12 }}>
+          <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?殉?謘?? / ?撖??輯???/div>
+          <input ref={shipmentFieldRefs.batch_display} value={shipmentForm.batch_display} onChange={e => setShipmentForm(prev => ({ ...prev, batch_display:e.target.value }))} style={{ ...inputStyle, borderColor: shipmentSuggestions.includes("?殉?謘?? / ?撖??輯???) ? "rgba(56,189,248,0.45)" : inputStyle.borderColor }} />
+        </div>
+
+        {selectedOrder && selectedOrder.lots && selectedOrder.lots.length > 0 && (
+          <div style={{ marginTop:14 }}>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:8 }}>?撖??謘?/div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {selectedOrder.lots.map(item => {
+                const checked = selectedLots.includes(item.lot);
+                return (
+                  <label key={item.lot} style={{ display:"flex", alignItems:"center", gap:6, background:checked?"rgba(167,139,250,0.18)":"rgba(255,255,255,0.05)", border:"1px solid " + (checked ? "rgba(167,139,250,0.45)" : "rgba(255,255,255,0.12)"), borderRadius:999, padding:"6px 12px", cursor:"pointer", fontSize:12, color:"#e9d5ff" }}>
+                    <input type="checkbox" checked={checked} onChange={e => setSelectedLots(prev => e.target.checked ? [...prev, item.lot] : prev.filter(lot => lot !== item.lot))} />
+                    <span>{item.lot}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop:14 }}>
+          <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?謕?</div>
+          <textarea value={shipmentForm.remark} onChange={e => setShipmentForm(prev => ({ ...prev, remark:e.target.value }))} style={{ ...inputStyle, minHeight:84, resize:"vertical" }} />
+        </div>
+
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", marginTop:16 }}>
+          <button onClick={generateShipmentDraft} disabled={shipmentBusy || shipmentLoading || !shipmentOrderNo} style={{ background:"linear-gradient(135deg,#7c3aed,#8b5cf6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(shipmentBusy || shipmentLoading || !shipmentOrderNo) ? 0.6 : 1 }}>{shipmentBusy ? "?嚗???.." : "?嚗??蝞??????}</button>
+          {shipmentMessage && <div style={{ fontSize:12, color:"#ddd6fe" }}>{shipmentMessage}</div>}
+        </div>
+      </Panel>
+
+      <Panel
+        title="?????????
+        description="????豰∪?????踐????????賹?蹓???蹓鳴????瘜????謕?蝞??葩?蹇謕?????漸???抵??瞏冪?陷???? AI ?叟??????????
+        accent="#fb923c"
+        actions={<Badge color="#fb923c">{engineCatalog.length} ?????/Badge>}
+        style={{ marginTop: 20 }}
+      >
+
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <Badge color="#f97316">1. ?岳?????/Badge>
+          <Badge color="#fb923c">2. ?鞊Ｚ???/Badge>
+          <Badge color="#38bdf8">3. ????鈭行??/Badge>
+          <Badge color="#22c55e">4. ?嚗???仿</Badge>
+        </div>
+
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <button
+            onClick={() => applyEngineTemplatePreset("management_review_pack", managementReviewPrompt, "???謜??????貔?蹓?????梁??????鈭行????)}
+            style={{ background:engineTemplateCode === "management_review_pack" ? "rgba(34,197,94,0.22)" : "rgba(255,255,255,0.06)", border:"1px solid rgba(34,197,94,0.24)", borderRadius:999, color:"#dcfce7", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}
+          >
+            ?????貔?伐?鈭
+          </button>
+          <button
+            onClick={() => applyEngineTemplatePreset("audit_pack", "?ｇ???獢??都赯梢??嚗???貉?鞈?僚?謍船???軋??潘撕?????謕?, "???謜??都赯梁?蹓???倦?)}
+            style={{ background:engineTemplateCode === "audit_pack" ? "rgba(59,130,246,0.22)" : "rgba(255,255,255,0.06)", border:"1px solid rgba(59,130,246,0.24)", borderRadius:999, color:"#dbeafe", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}
+          >
+            ?都赯梁?蹓???
+          </button>
+          <button
+            onClick={() => applyEngineTemplatePreset("cip_pack", "?ｇ???獢???瘜????謕??CIP ??????????謢???, "???謜? CIP / ??瘜????????)}
+            style={{ background:engineTemplateCode === "cip_pack" ? "rgba(249,115,22,0.22)" : "rgba(255,255,255,0.06)", border:"1px solid rgba(249,115,22,0.24)", borderRadius:999, color:"#ffedd5", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}
+          >
+            CIP / ??瘜???
+          </button>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1.3fr 1fr", gap:12, alignItems:"end" }}>
+          <div>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>???????/div>
+            <textarea value={enginePrompt} onChange={e => setEnginePrompt(e.target.value)} placeholder="????奕???踐??????謕?賹?????????謘???瘜????謕??? CIP ???? style={{ ...inputStyle, minHeight:80, resize:"vertical" }} />
+          </div>
+          <div>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?豰?/div>
+            <select value={engineTemplateCode} onChange={e => setEngineTemplateCode(e.target.value)} style={inputStyle}>
+              {engineCatalog.map(item => <option key={item.code} value={item.code}>{item.title}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {selectedEngineTemplate && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginTop:14 }}>
+            <div style={{ ...shipmentSummaryCardStyle, borderColor:"rgba(249,115,22,0.18)" }}>
+              <div style={{ fontSize:11, letterSpacing:1.1, color:"#fdba74", marginBottom:6 }}>?獢??豰?/div>
+              <div style={{ fontSize:16, fontWeight:700, color:"#fff7ed" }}>{selectedEngineTemplate.title}</div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginTop:4 }}>{selectedEngineTemplate.description}</div>
+            </div>
+            <div style={{ ...shipmentSummaryCardStyle, borderColor:"rgba(56,189,248,0.18)" }}>
+              <div style={{ fontSize:11, letterSpacing:1.1, color:"#7dd3fc", marginBottom:6 }}>?岳????</div>
+              <div style={{ fontSize:16, fontWeight:700, color:"#e0f2fe" }}>{selectedEngineTemplate.bundle ? "?播???/ ZIP" : "?獢??萄謘?/ XLSX"}</div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginTop:4 }}>{selectedEngineTemplate.bundle ? "???????蝞??陪?????? : "??堊?賹????????豰?}</div>
+            </div>
+          </div>
+        )}
+
+        {engineTemplateCode === "management_review_pack" && (
+          <div style={{ marginTop:14, padding:16, borderRadius:14, background:"linear-gradient(135deg, rgba(15,118,110,0.18), rgba(30,41,59,0.92))", border:"1px solid rgba(45,212,191,0.22)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", alignItems:"center" }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:700, color:"#ccfbf1" }}>??肅??????鈭??謕?</div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginTop:4 }}>?謕????????????貔螞?潭????鈭交??鈭??秋撕?????潭????鈭斗?????????憳??遴??????蹓??鬥餈斗??喳?閰鄞?/div>
+              </div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <button onClick={() => precheckRecordTemplate({ template_code: "management_review_pack", prompt: managementReviewPrompt })} disabled={engineBusy || enginePrecheckBusy} style={{ background:"linear-gradient(135deg,#0f766e,#14b8a6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 14px", fontSize:12, fontWeight:700, opacity:(engineBusy || enginePrecheckBusy) ? 0.6 : 1 }}>????鈭行????鈭???/button>
+                <button onClick={() => generateEngineRecord({ template_code: "management_review_pack", prompt: managementReviewPrompt })} disabled={engineBusy} style={{ background:"linear-gradient(135deg,#047857,#22c55e)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 14px", fontSize:12, fontWeight:700, opacity:engineBusy ? 0.6 : 1 }}>?皝??嚗??????貔??/button>
+              </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12, marginTop:14 }}>
+              {managementReviewSources.map(item => (
+                <div key={item.label} style={{ ...shipmentSummaryCardStyle, borderColor:"rgba(45,212,191,0.16)", background:"rgba(15,23,42,0.56)" }}>
+                  <div style={{ fontSize:11, letterSpacing:1.1, color:item.color, marginBottom:6 }}>{item.label}</div>
+                  <div style={{ fontSize:24, fontWeight:800, color:"#f8fafc" }}>{item.value}</div>
+                  <div style={{ fontSize:12, color:"#cbd5e1", marginTop:6 }}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {engineSuggestions.length > 0 && (
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
+            {engineSuggestions.map(item => (
+              <button key={item.code} onClick={() => setEngineTemplateCode(item.code)} style={{ background:item.code === engineTemplateCode ? "rgba(249,115,22,0.22)" : "rgba(255,255,255,0.06)", border:"1px solid rgba(249,115,22,0.24)", borderRadius:999, color:"#ffedd5", cursor:"pointer", padding:"6px 12px", fontSize:12 }}>
+                {item.title}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {engineTemplateCode === "cip_152" && (
+          <div style={{ marginTop:12 }}>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>??瘜?????/div>
+            <select value={selectedNcId} onChange={e => setSelectedNcId(e.target.value)} style={inputStyle}>
+              {safeNonConformances.map(item => <option key={item.id} value={item.id}>{item.id} - {item.description}</option>)}
+            </select>
+          </div>
+        )}
+
+        {(engineTemplateCode === "audit_notice" || engineTemplateCode === "audit_pack") && (
+          <div style={{ marginTop:12 }}>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?鞊??都赯梢?</div>
+            {safeAuditPlans.length === 0
+              ? <div style={{ fontSize:12, color:"#ef4444" }}>???垓??鞈?僚?殷??仿?????????潮??鞎??????????/div>
+              : <select value={selectedAuditId} onChange={e => setSelectedAuditId(e.target.value)} style={inputStyle}>
+                  {safeAuditPlans.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.id}?砭item.year} {item.period}?砭item.dept}?砭item.auditor} ??{item.auditee}
+                    </option>
+                  ))}
+                </select>
+            }
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", marginTop:16 }}>
+          <button onClick={suggestRecordTemplates} disabled={engineBusy} style={{ background:"linear-gradient(135deg,#b45309,#f97316)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:engineBusy ? 0.6 : 1 }}>{engineBusy ? "?????.." : "????梁????伍瓷"}</button>
+          <button onClick={precheckRecordTemplate} disabled={engineBusy || enginePrecheckBusy || !engineTemplateCode} style={{ background:"linear-gradient(135deg,#0369a1,#0ea5e9)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(engineBusy || enginePrecheckBusy || !engineTemplateCode) ? 0.6 : 1 }}>{enginePrecheckBusy ? "?潘撓貔??.." : "????鈭行??}</button>
+          <button onClick={generateEngineRecord} disabled={engineBusy || !engineTemplateCode} style={{ background:"linear-gradient(135deg,#c2410c,#ea580c)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(engineBusy || !engineTemplateCode) ? 0.6 : 1 }}>{engineBusy ? "?嚗???.." : "?嚗???????}</button>
+          {engineMessage && <div style={{ fontSize:12, color:"#ffedd5" }}>{engineMessage}</div>}
+        </div>
+
+        {enginePrecheck && (
+          <div style={{ marginTop:16, padding:16, borderRadius:14, background:"rgba(15,23,42,0.72)", border:"1px solid rgba(249,115,22,0.16)" }}>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginBottom:12 }}>
+              <Badge color={enginePrecheck.ready ? "#22c55e" : "#f97316"}>{enginePrecheck.ready ? "????鈭佇?? : "???????}</Badge>
+              <Badge color="#38bdf8">{(enginePrecheck.missing_items || []).length} ??????/Badge>
+              <Badge color="#f59e0b">{(enginePrecheck.warnings || []).length} ?????/Badge>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12 }}>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?????</div>
+                <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.8 }}>
+                  ?賹?爸enginePrecheck.source_counts?.prod_records || 0} ??br />
+                  ?蹓暸?爸enginePrecheck.source_counts?.quality_records || 0} ??br />
+                  ?蝞??爸enginePrecheck.source_counts?.shipment || 0} ??br />
+                  ??瘜???{enginePrecheck.source_counts?.all_nonconformances || enginePrecheck.source_counts?.nonconformance || 0} ??br />
+                  ?都赯梢??爸enginePrecheck.source_counts?.audit_plans || 0} ??
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?餌?????</div>
+                {(enginePrecheck.missing_details || []).length ? (
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {enginePrecheck.missing_details.map((detail, index) => (
+                      <button
+                        key={(detail.scope || "scope") + "-" + (detail.field_key || "field") + "-" + index}
+                        onClick={() => jumpToMissingDetail(detail)}
+                        style={{ background:"rgba(249,115,22,0.12)", border:"1px solid rgba(249,115,22,0.24)", borderRadius:999, color:"#ffedd5", cursor:"pointer", padding:"6px 10px", fontSize:12 }}
+                      >
+                        {detail.scope_label ? detail.scope_label + "?? : ""}{detail.label || detail.field_key}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize:13, color:"#86efac", lineHeight:1.8 }}>?獢?????對?菔蝞</div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?????伍瓷</div>
+                <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.8 }}>
+                  {enginePrecheck.bundle && (enginePrecheck.included_templates || []).length
+                    ? enginePrecheck.included_templates.map(item => item.title).join(" / ")
+                    : (enginePrecheck.downstream_templates || []).length
+                      ? enginePrecheck.downstream_templates.map(item => item.title).join(" / ")
+                      : "????叟◆??悻???}
+                </div>
+              </div>
+            </div>
+
+            {(enginePrecheck.warnings || []).length > 0 && (
+              <div style={{ marginTop:12 }}>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>???</div>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  {enginePrecheck.warnings.map((item, index) => (
+                    <span key={index} style={{ fontSize:12, color:"#ffedd5", background:"rgba(249,115,22,0.12)", border:"1px solid rgba(249,115,22,0.18)", borderRadius:999, padding:"6px 10px" }}>
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Panel>
+      </div>
+    </div>
+  );
+}
+
+
+
+function NotificationTab({ instruments, documents, equipment, suppliers, nonConformances, auditPlans }) {
+  const items = collectNotificationItems({ instruments, documents, equipment, suppliers, nonConformances, auditPlans });
+  const [googleStatus, setGoogleStatus] = useState({ configured: false, connected: false, email: "", redirect_uri: "" });
+  const [googleForm, setGoogleForm] = useState({ client_id: "", client_secret: "" });
+  const [googleBusy, setGoogleBusy] = useState("");
+  const [googleMessage, setGoogleMessage] = useState("");
+  const [notionForm, setNotionForm] = useState({ token: "", db_id: "" });
+  const [notionBusyKey, setNotionBusyKey] = useState("");
+  const [notionMessage, setNotionMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStatus() {
+      try {
+        const response = await fetch("/api/google-calendar/status");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+        if (!cancelled) setGoogleStatus(payload);
+      } catch (err) {
+        if (!cancelled) setGoogleMessage("???Google ?蛛????????? " + err.message);
+      }
+    }
+    loadStatus();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const googleState = params.get("google");
+    if (!googleState) return;
+    const reason = params.get("reason");
+    setGoogleMessage(googleState === "connected" ? "Google ?蛛?????堆?????? : "Google ????剜??: " + (reason || "unknown"));
+    params.delete("google");
+    params.delete("reason");
+    params.set("tab", "notification");
+    const next = window.location.pathname + "?" + params.toString();
+    window.history.replaceState({}, "", next);
+  }, []);
+
+  async function refreshGoogleStatus() {
+    const response = await fetch("/api/google-calendar/status");
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+    setGoogleStatus(payload);
+  }
+
+  async function saveGoogleConfig() {
+    setGoogleBusy("config");
+    setGoogleMessage("");
+    try {
+      const response = await fetch("/api/google-calendar/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googleForm),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      setGoogleStatus(payload);
+      setGoogleMessage("Google Calendar ?桀????謢朝?);
+      setGoogleForm(prev => ({ ...prev, client_secret: "" }));
+    } catch (err) {
+      setGoogleMessage("Google Calendar ?桀???剜??: " + err.message);
+    } finally {
+      setGoogleBusy("");
+    }
+  }
+
+  async function startGoogleAuth() {
+    setGoogleBusy("auth");
+    setGoogleMessage("");
+    try {
+      const response = await fetch("/api/google-calendar/auth/start");
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      window.location.href = payload.auth_url;
+    } catch (err) {
+      setGoogleMessage("?賹? Google ????剜??: " + err.message);
+      setGoogleBusy("");
+    }
+  }
+
+  async function logoutGoogle() {
+    setGoogleBusy("logout");
+    setGoogleMessage("");
+    try {
+      const response = await fetch("/api/google-calendar/logout", { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || ("HTTP " + response.status));
+      setGoogleStatus(payload);
+      setGoogleMessage("Google ?蛛??????謘?????);
+    } catch (err) {
+      setGoogleMessage("??謘?Google ?蛛?????? " + err.message);
+    } finally {
+      setGoogleBusy("");
+    }
+  }
+
+  async function createGoogleEvents(batchItems, mode) {
+    if (!batchItems.length) {
+      setGoogleMessage("?獢??????祇?∴???????梱???);
+      return;
+    }
+    setGoogleBusy(mode);
+    setGoogleMessage("");
+    try {
+      const response = await fetch("/api/google-calendar/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: batchItems }),
+      });
+      const payload = await response.json();
+      if (!response.ok && response.status !== 207) throw new Error(payload.error || ("HTTP " + response.status));
+      const detail = (payload.results || []).filter(result => !result.success).map(result => result.title + ": " + result.error).join("??);
+      setGoogleMessage(`Google ?蛛????∴???????? ${payload.success_count || 0} ????剜?? ${payload.failed_count || 0} ????{detail ? " ?剜?????? + detail : ""}`);
+      await refreshGoogleStatus();
+    } catch (err) {
+      setGoogleMessage("?梁?? Google ?蛛??????隞?? " + err.message);
+    } finally {
+      setGoogleBusy("");
+    }
+  }
+
+  async function sendToNotion(item) {
+    if (!notionForm.token || !notionForm.db_id) {
+      setNotionMessage("?ｇ???岳??Notion Token ??Database ID??);
+      return;
+    }
+    setNotionBusyKey(item.key);
+    setNotionMessage("");
+    try {
+      const response = await fetch("/api/notion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: notionForm.token,
+          db_id: notionForm.db_id,
+          properties: {
+            Name: { title: [{ text: { content: item.title } }] },
+            Module: { rich_text: [{ text: { content: item.module } }] },
+            Date: { date: { start: item.date } },
+            Owner: { rich_text: [{ text: { content: item.owner || "" } }] },
+            Summary: { rich_text: [{ text: { content: item.summary || "" } }] },
+          },
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || payload.message || JSON.stringify(payload));
+      setNotionMessage("??蹓鳴??Notion: " + item.title);
+    } catch (err) {
+      setNotionMessage("Notion ?梁???剜??: " + err.message);
+    } finally {
+      setNotionBusyKey("");
+    }
+  }
+
+  function openMailDraft(item) {
+    const subject = encodeURIComponent(item.title);
+    const body = encodeURIComponent([
+      "?鈭?: " + formatDate(item.date),
+      "???: " + item.module,
+      "?謢?: " + item.summary,
+      "?滿?? " + (item.owner || "?????),
+    ].join("\n"));
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  const overdueCount = items.filter(item => item.days < 0).length;
+  const thisWeekCount = items.filter(item => item.days >= 0 && item.days <= 7).length;
+  const moduleCounts = items.reduce((acc, item) => {
+    acc[item.module] = (acc[item.module] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div>
+      <SectionHeader title="?謍船????" count={items.length} color="#f59e0b" />
+      <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+        <StatCard label="????株都?? value={items.length} color="#f59e0b" sub="30 ?剜???????" />
+        <StatCard label="????" value={overdueCount} color="#ef4444" sub="??????" />
+        <StatCard label="7 ?剜??? value={thisWeekCount} color="#f97316" sub="擗????" />
+        <StatCard label="Google ???? value={googleStatus.connected ? "????" : googleStatus.configured ? "?綽??? : "??曇澈??} color={googleStatus.connected ? "#22c55e" : googleStatus.configured ? "#eab308" : "#64748b"} sub={googleStatus.email || "primary calendar"} />
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(320px, 1.1fr) minmax(320px, 0.9fr)", gap:16, marginBottom:20 }}>
+        <div style={{ background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:14, padding:18 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap", marginBottom:12 }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#fef3c7" }}>Google ?蛛???/div>
+              <div style={{ fontSize:12, color:"#fcd34d", marginTop:4 }}>????獢??謘踝?蟡??primary calendar??/div>
+            </div>
+            <Badge color={googleStatus.connected ? "#22c55e" : googleStatus.configured ? "#eab308" : "#94a3b8"}>{googleStatus.connected ? "???? : googleStatus.configured ? "?綽??? : "??曇澈??}</Badge>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:12 }}>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>Google Client ID</div>
+              <input value={googleForm.client_id} onChange={e => setGoogleForm(prev => ({ ...prev, client_id: e.target.value }))} placeholder="??? Google OAuth Client ID" style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>Google Client Secret</div>
+              <input type="password" value={googleForm.client_secret} onChange={e => setGoogleForm(prev => ({ ...prev, client_secret: e.target.value }))} placeholder="??? Google OAuth Client Secret" style={inputStyle} />
+            </div>
+            <div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.6 }}>
+              Redirect URI: <span style={{ color:"#e2e8f0", fontFamily:"monospace" }}>{googleStatus.redirect_uri || "??謘餉?"}</span>
+            </div>
+          </div>
+
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:14 }}>
+            <button onClick={saveGoogleConfig} disabled={googleBusy !== ""} style={{ background:"linear-gradient(135deg,#b45309,#f59e0b)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: googleBusy ? 0.6 : 1 }}>{googleBusy === "config" ? "?????.." : "????桀??"}</button>
+            <button onClick={startGoogleAuth} disabled={googleBusy !== "" || !googleStatus.configured} style={{ background:"linear-gradient(135deg,#1d4ed8,#3b82f6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: (googleBusy || !googleStatus.configured) ? 0.6 : 1 }}>{googleBusy === "auth" ? "?????.." : "??? Google"}</button>
+            <button onClick={() => createGoogleEvents(items, "batch")} disabled={googleBusy !== "" || !items.length} style={{ background:"linear-gradient(135deg,#0369a1,#0ea5e9)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: (googleBusy || !items.length) ? 0.6 : 1 }}>{googleBusy === "batch" ? "?梁????.." : "??賂豢蝞? Google ?哨?颲?}</button>
+            <button onClick={logoutGoogle} disabled={googleBusy !== "" || !googleStatus.connected} style={{ background:"rgba(239,68,68,0.14)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:10, color:"#fca5a5", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: (googleBusy || !googleStatus.connected) ? 0.6 : 1 }}>{googleBusy === "logout" ? "?????.." : "??謘???"}</button>
+          </div>
+          {googleMessage && <div style={{ marginTop:12, fontSize:12, color:"#fde68a", lineHeight:1.6 }}>{googleMessage}</div>}
+        </div>
+
+        <div style={{ background:"rgba(99,102,241,0.08)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:14, padding:18 }}>
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:"#e0e7ff" }}>Notion ??抬??■??????/div>
+            <div style={{ fontSize:12, color:"#c7d2fe", marginTop:4 }}>??威???蹓鳴? Notion?????豯佇? Email / Google ?梁???蹓嗽?/div>
+          </div>
+
+          <div style={{ display:"grid", gap:12 }}>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>Notion Token</div>
+              <input type="password" value={notionForm.token} onChange={e => setNotionForm(prev => ({ ...prev, token: e.target.value }))} placeholder="secret_xxx" style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>Notion Database ID</div>
+              <input value={notionForm.db_id} onChange={e => setNotionForm(prev => ({ ...prev, db_id: e.target.value }))} placeholder="??? Notion Database ID" style={inputStyle} />
+            </div>
+          </div>
+          <div style={{ marginTop:14, fontSize:12, color:"#a5b4fc", lineHeight:1.7 }}>
+            ??澈??萇???`Name / Module / Date / Owner / Summary` ?叟?????選??蹇??遴?????冽??選???????Notion ??畸??鈭???莎??斗食??????對??瑞???迎????純?
+          </div>
+          {notionMessage && <div style={{ marginTop:12, fontSize:12, color:"#c7d2fe", lineHeight:1.6 }}>{notionMessage}</div>}
+          <div style={{ marginTop:16 }}>
+            <div style={{ fontSize:13, color:"#e2e8f0", fontWeight:700, marginBottom:8 }}>??????</div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {Object.entries(moduleCounts).map(([module, count]) => (
+                <Badge key={module} color="#818cf8">{module} x {count}</Badge>
+              ))}
+              {items.length === 0 && <span style={{ fontSize:12, color:"#94a3b8" }}>?獢???????秋撚?謍船?????謕?/span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+        {items.map(item => (
+          <div key={item.key} style={{ background: urgencyBg(item.days), border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:16 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", alignItems:"flex-start" }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0" }}>{item.title}</div>
+                  <Badge color={urgencyColor(item.days)}>{item.statusText}</Badge>
+                  <Badge color="#60a5fa">{item.module}</Badge>
+                </div>
+                <div style={{ fontSize:13, color:"#cbd5e1", lineHeight:1.6 }}>{item.summary}</div>
+                <div style={{ fontSize:12, color:"#94a3b8" }}>
+                  ?鈭? {formatDate(item.date)} {item.owner ? " / ?滿??" + item.owner : ""}
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                <button onClick={() => createGoogleEvents([item], "single:" + item.key)} disabled={googleBusy !== ""} style={{ background:"linear-gradient(135deg,#0369a1,#0ea5e9)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"9px 14px", fontSize:12, fontWeight:700, opacity: googleBusy ? 0.6 : 1 }}>{googleBusy === "single:" + item.key ? "?梁????.." : "?梁?? Google ?哨?颲?}</button>
+                <button onClick={() => window.open(buildCalendarLink(item), "_blank", "noopener,noreferrer")} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.16)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"9px 14px", fontSize:12, fontWeight:700 }}>????梁????/button>
+                <button onClick={() => sendToNotion(item)} disabled={notionBusyKey !== ""} style={{ background:"rgba(99,102,241,0.16)", border:"1px solid rgba(99,102,241,0.32)", borderRadius:10, color:"#c7d2fe", cursor:"pointer", padding:"9px 14px", fontSize:12, fontWeight:700, opacity: notionBusyKey ? 0.6 : 1 }}>{notionBusyKey === item.key ? "?蹓鳴??.." : "?蹓鳴? Notion"}</button>
+                <button onClick={() => openMailDraft(item)} style={{ background:"rgba(245,158,11,0.14)", border:"1px solid rgba(245,158,11,0.3)", borderRadius:10, color:"#fde68a", cursor:"pointer", padding:"9px 14px", fontSize:12, fontWeight:700 }}>Email ??仿</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AIWorkbenchTab({ documents, manuals, nonConformances }) {
+  const fallbackSources = [...documents, ...manuals]
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      department: item.department || "",
+      version: item.version || "",
+      path: item.docxPath || item.pdfPath || "",
+    }))
+    .filter(item => item.path)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const [masterSources, setMasterSources] = useState([]);
+  const [masterSourceInfo, setMasterSourceInfo] = useState({
+    mode: "fallback",
+    source_path: "",
+    count: 0,
+    pending_review_count: 0,
+    message: "",
+  });
+  const sources = masterSources.length > 0 ? masterSources : fallbackSources;
+  const sourceMetadata = sources.reduce((acc, item) => {
+    acc[item.path] = {
+      title: item.name,
+      document_code: item.id,
+      owner_dept: item.department,
+      version: item.version,
+      source_system: item.source_system || (masterSources.length > 0 ? "burlan_official_master" : "iso_local_library"),
+    };
+    return acc;
+  }, {});
+
+  const [apiBase, setApiBase] = useState(() => loadStoredState("audit_v2_api_base", "http://127.0.0.1:8890/api/v2"));
+  const [serviceInfo, setServiceInfo] = useState({ service: "auto-audit-v2", database_mode: "unknown", openrouter_enabled: false });
+  const [serviceMessage, setServiceMessage] = useState("");
+  const [cacheBusy, setCacheBusy] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState({ compare_cache_count: 0, audit_cache_count: 0 });
+  const [ingestBusy, setIngestBusy] = useState(false);
+  const [ingestMessage, setIngestMessage] = useState("");
+  const [ingestResult, setIngestResult] = useState(null);
+  const [selectedPath, setSelectedPath] = useState(sources[0]?.path || "");
+  const [compareMode, setCompareMode] = useState("generic");
+  const [compareUseLlm, setCompareUseLlm] = useState(false);
+  const [compareLeftPath, setCompareLeftPath] = useState(sources[0]?.path || "");
+  const [compareRightPath, setCompareRightPath] = useState(sources[1]?.path || sources[0]?.path || "");
+  const [compareBusy, setCompareBusy] = useState(false);
+  const [compareExportBusy, setCompareExportBusy] = useState(false);
+  const [compareDocxExportBusy, setCompareDocxExportBusy] = useState(false);
+  const [compareResult, setCompareResult] = useState(null);
+  const [compareMessage, setCompareMessage] = useState("");
+  const [versionCandidatesBusy, setVersionCandidatesBusy] = useState(false);
+  const [versionCandidates, setVersionCandidates] = useState([]);
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [auditExportBusy, setAuditExportBusy] = useState(false);
+  const [auditResult, setAuditResult] = useState(null);
+  const [auditMessage, setAuditMessage] = useState("");
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyMode, setHistoryMode] = useState("all");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyMessage, setHistoryMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("?閰? ??暑 ?踐??");
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [qaQuestion, setQaQuestion] = useState("??刻麾?謘??殷??????制??踐????軋僚?????餅螂??縈?");
+  const [qaScope, setQaScope] = useState("selected");
+  const [qaBusy, setQaBusy] = useState(false);
+  const [qaResult, setQaResult] = useState(null);
+  const [qaMessage, setQaMessage] = useState("");
+  const [spcBusy, setSpcBusy] = useState(false);
+  const [spcResult, setSpcResult] = useState(null);
+  const [spcMessage, setSpcMessage] = useState("");
+  const [spcForm, setSpcForm] = useState({
+    parameter_name: "Thickness",
+    csv_text: "10.1,10.0,9.9,10.2,10.1",
+    lsl: "9.5",
+    usl: "10.5",
+    target: "10.0",
+  });
+  const [deviationBusy, setDeviationBusy] = useState(false);
+  const [deviationResult, setDeviationResult] = useState(null);
+  const [deviationMessage, setDeviationMessage] = useState("");
+  const [deviationForm, setDeviationForm] = useState(() => ({
+    issue_description: nonConformances[0]?.description || "",
+    process_step: "AOI ?潘??",
+    lot_no: "LOT-20260301-A",
+    severity: "medium",
+  }));
+
+  useEffect(() => {
+    saveStoredState("audit_v2_api_base", apiBase);
+  }, [apiBase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBurlanMasterSources() {
+      try {
+        const payload = await apiJson("/api/burlan/master-documents");
+        if (cancelled) return;
+        const items = (payload.items || []).filter(item => item.path);
+        setMasterSources(items);
+        setMasterSourceInfo({
+          mode: items.length > 0 ? "master" : "fallback",
+          source_path: payload.source_path || "",
+          count: payload.count || items.length,
+          pending_review_count: payload.pending_review_count || 0,
+          message: payload.message || "",
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setMasterSources([]);
+        setMasterSourceInfo({
+          mode: "fallback",
+          source_path: "",
+          count: fallbackSources.length,
+          pending_review_count: 0,
+          message: "?獢??????賂?梁???皝?????畾??賹??? + err.message,
+        });
+      }
+    }
+    loadBurlanMasterSources();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sources.length) return;
+    if (!sources.some(item => item.path === selectedPath)) {
+      setSelectedPath(sources[0]?.path || "");
+    }
+  }, [sources, selectedPath]);
+
+  useEffect(() => {
+    if (!sources.length) return;
+    if (!sources.some(item => item.path === compareLeftPath)) {
+      setCompareLeftPath(sources[0]?.path || "");
+    }
+    if (!sources.some(item => item.path === compareRightPath)) {
+      setCompareRightPath(sources[1]?.path || sources[0]?.path || "");
+    }
+  }, [sources, compareLeftPath, compareRightPath]);
+
+  useEffect(() => {
+    setVersionCandidates([]);
+    if (compareMode === "version") {
+      setCompareRightPath("");
+    }
+  }, [compareLeftPath, compareMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHealth() {
+      try {
+        const payload = await callV2("/health");
+        if (!cancelled) {
+          setServiceInfo(payload.data || {});
+          setServiceMessage("");
+        }
+        const cachePayload = await callV2("/cache/status");
+        if (!cancelled) {
+          setCacheStatus(cachePayload.data || {});
+        }
+        const historyPayload = await callV2("/history/runs?mode=all&limit=12");
+        if (!cancelled) {
+          setHistoryItems(historyPayload.data?.items || []);
+          setHistoryMessage("");
+        }
+      } catch (err) {
+        if (!cancelled) setServiceMessage("V2 ????垮謓舀?璇?: " + err.message);
+      }
+    }
+    loadHealth();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase]);
+
+  async function callV2(path, options = {}) {
+    const response = await fetch(apiBase + path, options);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || payload.error || ("HTTP " + response.status));
+    if (!payload.success) throw new Error(payload.message || payload.error_code || "V2 request failed");
+    return payload;
+  }
+
+  async function runDocumentAudit() {
+    if (!selectedPath) {
+      setAuditMessage("?ｇ???鞊???刻麾??);
+      return;
+    }
+    setAuditBusy(true);
+    setAuditMessage("");
+    try {
+      const payload = await callV2("/documents/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: selectedPath }),
+      });
+      setAuditResult(payload.data);
+      setAuditMessage("??刻麾?都赯望????);
+      loadHistory(historyMode, historyQuery);
+    } catch (err) {
+      setAuditMessage("??刻麾?都赯望??: " + err.message);
+    } finally {
+      setAuditBusy(false);
+    }
+  }
+
+  async function exportDocumentAuditWordReport() {
+    if (!selectedPath) {
+      setAuditMessage("?ｇ???鞊???刻麾??);
+      return;
+    }
+    setAuditExportBusy(true);
+    setAuditMessage("");
+    try {
+      const response = await fetch(apiBase + "/documents/audit/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: selectedPath }),
+      });
+      if (!response.ok) {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (err) {
+          payload = null;
+        }
+        throw new Error(payload?.message || ("HTTP " + response.status));
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "document_audit_report.docx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setAuditMessage("AI ??刻麾?都赯?Word ?????????);
+      loadHistory(historyMode, historyQuery);
+    } catch (err) {
+      setAuditMessage("AI ??刻麾?都赯?Word ???????剜??: " + err.message);
+    } finally {
+      setAuditExportBusy(false);
+    }
+  }
+
+  async function runDocumentCompare() {
+    if (!compareLeftPath || !compareRightPath) {
+      setCompareMessage("?ｇ???鞊????????刻麾??);
+      return;
+    }
+    setCompareBusy(true);
+    setCompareMessage("");
+    try {
+      const payload = await callV2("/documents/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ left_path: compareLeftPath, right_path: compareRightPath, use_llm: compareUseLlm }),
+      });
+      setCompareResult(payload.data);
+      setCompareMessage("??刻麾???芰???堆???);
+      loadHistory(historyMode, historyQuery);
+    } catch (err) {
+      setCompareMessage("??刻麾???芰???剜??: " + err.message);
+    } finally {
+      setCompareBusy(false);
+    }
+  }
+
+  async function loadVersionCandidates() {
+    if (!compareLeftPath) {
+      setCompareMessage("?ｇ???鞊??蝞???刻麾??);
+      return;
+    }
+    setVersionCandidatesBusy(true);
+    setCompareMessage("");
+    try {
+      const payload = await callV2("/documents/version-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: compareLeftPath, limit: 12 }),
+      });
+      const candidates = payload.data?.candidates || [];
+      setVersionCandidates(candidates);
+      if (candidates[0]?.path) {
+        setCompareRightPath(candidates[0].path);
+      }
+      setCompareMessage(candidates.length ? "???鈭???刻麾??暑?謕??? : "???????輯?????????謕???);
+    } catch (err) {
+      setCompareMessage("??暑?謕??謚??剜??: " + err.message);
+    } finally {
+      setVersionCandidatesBusy(false);
+    }
+  }
+
+  async function exportDocumentCompareReport() {
+    if (!compareLeftPath || !compareRightPath) {
+      setCompareMessage("?ｇ???鞊????????刻麾??);
+      return;
+    }
+    setCompareExportBusy(true);
+    setCompareMessage("");
+    try {
+      const response = await fetch(apiBase + "/documents/compare/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ left_path: compareLeftPath, right_path: compareRightPath, use_llm: compareUseLlm }),
+      });
+      if (!response.ok) {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (err) {
+          payload = null;
+        }
+        throw new Error(payload?.message || ("HTTP " + response.status));
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "document_compare_report.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setCompareMessage("?餌捂??伍???????????);
+      loadHistory(historyMode, historyQuery);
+    } catch (err) {
+      setCompareMessage("?餌捂??伍?????????剜??: " + err.message);
+    } finally {
+      setCompareExportBusy(false);
+    }
+  }
+
+  async function exportDocumentCompareWordReport() {
+    if (!compareLeftPath || !compareRightPath) {
+      setCompareMessage("?ｇ???鞊????????刻麾??);
+      return;
+    }
+    setCompareDocxExportBusy(true);
+    setCompareMessage("");
+    try {
+      const response = await fetch(apiBase + "/documents/compare/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ left_path: compareLeftPath, right_path: compareRightPath, use_llm: compareUseLlm }),
+      });
+      if (!response.ok) {
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (err) {
+          payload = null;
+        }
+        throw new Error(payload?.message || ("HTTP " + response.status));
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "document_compare_report.docx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setCompareMessage("Word ?伍???????????);
+      loadHistory(historyMode, historyQuery);
+    } catch (err) {
+      setCompareMessage("Word ?伍?????????剜??: " + err.message);
+    } finally {
+      setCompareDocxExportBusy(false);
+    }
+  }
+
+  async function ingestPaths(paths) {
+    if (!paths.length) {
+      setIngestMessage("?獢??????穿??鈭???刻麾??);
+      return;
+    }
+    setIngestBusy(true);
+    setIngestMessage("");
+    try {
+      const payload = await callV2("/documents/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paths,
+          metadata: paths.reduce((acc, path) => {
+            acc[path] = sourceMetadata[path] || {};
+            return acc;
+          }, {}),
+        }),
+      });
+      setIngestResult(payload.data);
+      setIngestMessage(`????${payload.data.ingested_count} ?都?????隡??剜?? ${payload.data.failed_count || 0} ?閉?蹐?;
+      const healthPayload = await callV2("/health");
+      setServiceInfo(healthPayload.data || {});
+      const cachePayload = await callV2("/cache/status");
+      setCacheStatus(cachePayload.data || {});
+    } catch (err) {
+      setIngestMessage("?撖暑??穿?剜??: " + err.message);
+    } finally {
+      setIngestBusy(false);
+    }
+  }
+
+  async function clearRuntimeCache(target) {
+    setCacheBusy(true);
+    setServiceMessage("");
+    try {
+      const payload = await callV2("/cache/clear?target=" + encodeURIComponent(target), { method: "POST" });
+      const cachePayload = await callV2("/cache/status");
+      setCacheStatus(cachePayload.data || {});
+      setCompareResult(prev => prev ? { ...prev, cache_hit: false } : prev);
+      setAuditResult(prev => prev ? { ...prev, cache_hit: false } : prev);
+      setServiceMessage(`????${payload.data.deleted_compare_cache || 0} ????????蝧?謘甄?{payload.data.deleted_audit_cache || 0} ??????閰函膩?謘甄蹐?;
+    } catch (err) {
+      setServiceMessage("?寞????剜??: " + err.message);
+    } finally {
+      setCacheBusy(false);
+    }
+  }
+
+  async function loadHistory(mode = historyMode, query = historyQuery) {
+    setHistoryBusy(true);
+    setHistoryMessage("");
+    try {
+      const payload = await callV2("/history/runs?mode=" + encodeURIComponent(mode) + "&q=" + encodeURIComponent(query.trim()) + "&limit=20");
+      setHistoryItems(payload.data?.items || []);
+      setHistoryMessage((payload.data?.items || []).length ? "???鈭??謚恍◢??純? : "?獢??鈭佗??????颲??◢??????);
+    } catch (err) {
+      setHistoryMessage("?荒?????暸???謘潔??? " + err.message);
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  async function runSearch() {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchBusy(true);
+    setServiceMessage("");
+    try {
+      const payload = await callV2("/documents/search?q=" + encodeURIComponent(searchQuery.trim()) + "&limit=8");
+      setSearchResults(payload.data?.hits || []);
+    } catch (err) {
+      setServiceMessage("??刻麾?謚??剜??: " + err.message);
+    } finally {
+      setSearchBusy(false);
+    }
+  }
+
+  async function runKnowledgeQA() {
+    if (!qaQuestion.trim()) {
+      setQaMessage("?ｇ???岳??????);
+      return;
+    }
+    setQaBusy(true);
+    setQaMessage("");
+    try {
+      const qaPayload = { question: qaQuestion.trim(), limit: 5 };
+      if (qaScope === "selected" && selectedPath) {
+        qaPayload.path = selectedPath;
+      }
+      const payload = await callV2("/knowledge/qa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(qaPayload),
+      });
+      setQaResult(payload.data);
+      setQaMessage("??刻麾?鈭?????堆???);
+    } catch (err) {
+      setQaMessage("??刻麾?鈭?????剜??: " + err.message);
+    } finally {
+      setQaBusy(false);
+    }
+  }
+
+  async function runSpcAnalyze() {
+    setSpcBusy(true);
+    setSpcMessage("");
+    try {
+      const payload = await callV2("/spc/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parameter_name: spcForm.parameter_name,
+          csv_text: spcForm.csv_text,
+          lsl: spcForm.lsl === "" ? null : Number(spcForm.lsl),
+          usl: spcForm.usl === "" ? null : Number(spcForm.usl),
+          target: spcForm.target === "" ? null : Number(spcForm.target),
+        }),
+      });
+      setSpcResult(payload.data);
+      setSpcMessage("SPC ?謢??堆???);
+    } catch (err) {
+      setSpcMessage("SPC ?謢??剜??: " + err.message);
+    } finally {
+      setSpcBusy(false);
+    }
+  }
+
+  async function runDeviationDraft() {
+    setDeviationBusy(true);
+    setDeviationMessage("");
+    try {
+      const payload = await callV2("/deviations/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(deviationForm),
+      });
+      setDeviationResult(payload.data);
+      setDeviationMessage("??????仿?堆???);
+    } catch (err) {
+      setDeviationMessage("??????仿?剜??: " + err.message);
+    } finally {
+      setDeviationBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <PageIntro
+        eyebrow="??肅?AI ??刻麾???"
+        title="AI ?鼎??????肅?V2??
+        description="?謕??蹓??????餈斗????? AI ????垮????閰鄞蹓???????蹓踐??朱????蹍C ?謢???恃?????葩?蹇??舀??????輯撒??????餈斗???????荒?.xlsx???遴鬥???????
+      >
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <StatCard label="??刻麾???" value={sources.length} color="#38bdf8" sub={masterSourceInfo.mode === "master" ? "???????餈斗???????荒?" : "????輯撒???寥?謕??謘?} />
+          <StatCard label="???冽亥??? value={serviceInfo.database_mode || "unknown"} color={serviceInfo.database_mode === "postgresql" ? "#22c55e" : "#f59e0b"} sub={(serviceInfo.database_status && serviceInfo.database_status.using_fallback) ? "?????SQLite" : "??????冽??鈭?"} />
+          <StatCard label="LLM ???? value={serviceInfo.openrouter_enabled ? "???? : "?????} color={serviceInfo.openrouter_enabled ? "#22c55e" : "#64748b"} sub="?秋?????????????" />
+        </div>
+        <div style={{ marginTop:14, fontSize:12, color:"#cbd5e1", lineHeight:1.8 }}>
+          {masterSourceInfo.mode === "master"
+            ? `????獢????${masterSourceInfo.source_path || "?????}??謆????${masterSourceInfo.count || sources.length} ?都?????綽??鈭色??${masterSourceInfo.pending_review_count || 0} ?閉?蹐?
+            : (masterSourceInfo.message || "?垮謓舫?????肅?餈斗???????荒???)}
+        </div>
+      </PageIntro>
+
+      <Panel
+        title="???????????□?"
+        description="????V2 ????蹓??謕???拍膩?謘???蹇??秋撮?????????鈭?????謘???膩?謘???????
+        accent="#38bdf8"
+        style={{ marginBottom: 18 }}
+      >
+        <div style={{ display:"grid", gridTemplateColumns:"1.2fr 0.8fr", gap:12, alignItems:"end" }}>
+          <div>
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>V2 API Base URL</div>
+            <input value={apiBase} onChange={e => setApiBase(e.target.value.trim())} style={inputStyle} />
+          </div>
+          <button onClick={runSearch} disabled={searchBusy} style={buttonStyle("primary", searchBusy)}>{searchBusy ? "?謚???.." : "??撗??刻麾?謚?"}</button>
+        </div>
+        <div style={{ marginTop:10, fontSize:12, color: serviceMessage ? "#fca5a5" : "#7dd3fc" }}>
+          {serviceMessage || "V2 ????鈭??潘撓貔??恃??綜姿???澈?輯撒??http://127.0.0.1:8890/api/v2??}
+        </div>
+        {serviceInfo.database_status && (
+          <div style={{ marginTop:8, fontSize:12, color:"#cbd5e1", lineHeight:1.7 }}>
+            ?獢????冽?{serviceInfo.database_status.active_database_url || "unknown"}
+            {serviceInfo.database_status.using_fallback && serviceInfo.database_status.fallback_reason ? "??ostgreSQL ?賹??剜?????蹎?" + serviceInfo.database_status.fallback_reason : ""}
+          </div>
+        )}
+        <div style={{ marginTop:10, display:"flex", gap:8, flexWrap:"wrap" }}>
+          <Badge color="#14b8a6">?伍???寞? {cacheStatus.compare_cache_count || 0}</Badge>
+          <Badge color="#38bdf8">?都赯望?? {cacheStatus.audit_cache_count || 0}</Badge>
+          {cacheStatus.latest_compare_cache_at && <Badge color="#64748b">?伍???寞??皝? {cacheStatus.latest_compare_cache_at.slice(0, 19).replace("T", " ")}</Badge>}
+          {cacheStatus.latest_audit_cache_at && <Badge color="#64748b">?都赯望???皝? {cacheStatus.latest_audit_cache_at.slice(0, 19).replace("T", " ")}</Badge>}
+        </div>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:12 }}>
+          <button onClick={() => ingestPaths(sources.map(item => item.path))} disabled={ingestBusy || sources.length === 0} style={buttonStyle("success", ingestBusy || sources.length === 0)}>{ingestBusy ? "??穿??.." : (masterSourceInfo.mode === "master" ? "??穿??肅????荒???賂??刻麾" : "??穿??賂?ISO ??刻麾")}</button>
+          <button onClick={() => ingestPaths(selectedPath ? [selectedPath] : [])} disabled={ingestBusy || !selectedPath} style={buttonStyle("secondary", ingestBusy || !selectedPath)}>??賂??鈭佇?????????/button>
+          <button onClick={() => clearRuntimeCache("all")} disabled={cacheBusy} style={buttonStyle("danger", cacheBusy)}>{cacheBusy ? "????.." : "?謒??賂豢??"}</button>
+          <button onClick={() => clearRuntimeCache("compare")} disabled={cacheBusy} style={buttonStyle("warning", cacheBusy)}>????伍???寞?</button>
+          <button onClick={() => clearRuntimeCache("audit")} disabled={cacheBusy} style={buttonStyle("secondary", cacheBusy)}>????都赯望??</button>
+          {ingestMessage && <div style={{ fontSize:12, color:"#99f6e4", alignSelf:"center" }}>{ingestMessage}</div>}
+        </div>
+        {ingestResult && (
+          <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.7 }}>
+              ?????皝? {ingestResult.ingested_count} ?都?????剜?? {ingestResult.failed_count || 0} ?????擗????隞???蹌?{ingestResult.documents?.[0]?.title || "n/a"}??
+            </div>
+            {(ingestResult.documents || []).slice(0, 5).map(item => {
+              const parserBadge = getParserBadge(item.parser_name);
+              const layoutBadge = getLayoutBadge(item);
+              return (
+                <div key={item.document_id || item.source_path} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+                    <div>
+                      <div style={{ fontSize:12, color:"#e2e8f0", fontWeight:700 }}>{item.title}</div>
+                      <div style={{ fontSize:11, color:"#94a3b8", marginTop:4 }}>{item.source_path}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                      {parserBadge && <Badge color={parserBadge.color}>{parserBadge.label}</Badge>}
+                      {layoutBadge && <Badge color={layoutBadge.color}>{layoutBadge.label}</Badge>}
+                    </div>
+                  </div>
+                  {item.parser_note && <div style={{ marginTop:8, fontSize:11, color:"#cbd5e1", lineHeight:1.6 }}>{item.parser_note}</div>}
+                </div>
+              );
+            })}
+            {(ingestResult.documents || []).length > 5 && (
+              <div style={{ fontSize:11, color:"#94a3b8" }}>??? {(ingestResult.documents || []).length - 5} ?都???甇??穿???嚗??輯????5 ?閉??/div>
+            )}
+          </div>
+        )}
+      </Panel>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))", gap:16 }}>
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>AI ??刻麾?都赯?/div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:10 }}>????輯????肅?餈斗???????荒??????刻麾???皝??蹓鳴 V2 ?秋??都赯??/div>
+          <select value={selectedPath} onChange={e => setSelectedPath(e.target.value)} style={inputStyle}>
+            {sources.map(item => (
+              <option key={item.id + item.path} value={item.path}>{item.id}?砭item.name}{item.review_status ? `??{item.review_status}` : ""}</option>
+            ))}
+          </select>
+          <div style={{ display:"flex", gap:10, marginTop:12, flexWrap:"wrap" }}>
+            <button onClick={runDocumentAudit} disabled={auditBusy || !selectedPath} style={{ background:"linear-gradient(135deg,#2563eb,#38bdf8)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(auditBusy || !selectedPath) ? 0.6 : 1 }}>{auditBusy ? "?都赯梢??.." : "?????刻麾?都赯?}</button>
+            <button onClick={exportDocumentAuditWordReport} disabled={auditExportBusy || !selectedPath} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(auditExportBusy || !selectedPath) ? 0.6 : 1 }}>{auditExportBusy ? "??穿??.." : "????都赯?Word ???"}</button>
+          </div>
+          {auditMessage && <div style={{ marginTop:10, fontSize:12, color:"#bae6fd" }}>{auditMessage}</div>}
+          {auditResult && (
+            <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.7 }}>{auditResult.summary}</div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <Badge color="#60a5fa">prompt {auditResult.prompt_version}</Badge>
+                <Badge color={auditResult.needs_human_review ? "#f59e0b" : "#22c55e"}>{auditResult.needs_human_review ? "???剔?璆菟?僚" : "????鈭止???}</Badge>
+                {typeof auditResult.cache_hit === "boolean" && <Badge color={auditResult.cache_hit ? "#14b8a6" : "#64748b"}>{auditResult.cache_hit ? "?鞈剛??寞?" : "????殷??"}</Badge>}
+                {getParserBadge(auditResult.parser_name) && <Badge color={getParserBadge(auditResult.parser_name).color}>{getParserBadge(auditResult.parser_name).label}</Badge>}
+                {getLayoutBadge(auditResult) && <Badge color={getLayoutBadge(auditResult).color}>{getLayoutBadge(auditResult).label}</Badge>}
+              </div>
+              {auditResult.parser_note && (
+                <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.7, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                  ????方??爸auditResult.parser_note}
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>????謘?/div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {(auditResult.issues || []).map(item => (
+                    <div key={item.code} style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.18)", borderRadius:10, padding:"10px 12px" }}>
+                      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:4 }}>
+                        <Badge color={item.severity === "high" ? "#ef4444" : "#f59e0b"}>{item.severity}</Badge>
+                        <span style={{ fontSize:13, color:"#fecaca", fontWeight:700 }}>{item.title}</span>
+                      </div>
+                      <div style={{ fontSize:12, color:"#fca5a5" }}>{item.description}</div>
+                    </div>
+                  ))}
+                  {(!auditResult.issues || auditResult.issues.length === 0) && <div style={{ fontSize:12, color:"#4ade80" }}>?獢??秋??潘撓貔??堊赤????秋播??倦?餌捂???/div>}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>????芣</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {(auditResult.citations || []).map((item, idx) => (
+                    <div key={idx} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                      <div style={{ fontSize:12, color:"#7dd3fc", marginBottom:4 }}>{item.title}</div>
+                      <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4 }}>{item.source_path}</div>
+                      {(item.page_no || item.section_name) && (
+                        <div style={{ fontSize:11, color:"#cbd5e1", marginBottom:4 }}>
+                          {item.page_no ? `?蹓賤??{item.page_no}` : "?蹓賤?垮謓舐?謕"}
+                          {item.section_name ? ` ???????${item.section_name}` : ""}
+                        </div>
+                      )}
+                      <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>{item.preview}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>??刻麾???芰??</div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:10 }}>?伍????????謘踱?獢???秧????蹓賣?????????等???/div>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10, padding:"10px 12px", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10 }}>
+            <input id="compare-llm-toggle" type="checkbox" checked={compareUseLlm} onChange={e => setCompareUseLlm(e.target.checked)} />
+            <label htmlFor="compare-llm-toggle" style={{ fontSize:12, color:"#cbd5e1", cursor:"pointer" }}>?賹? LLM ?謢?</label>
+            <span style={{ fontSize:11, color:"#94a3b8" }}>??澈?謚??蹇????????秋?????殉?璁????伍???寞?/span>
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+            <button onClick={() => setCompareMode("generic")} style={{ background:compareMode === "generic" ? "rgba(29,78,216,0.22)" : "rgba(255,255,255,0.04)", border:"1px solid " + (compareMode === "generic" ? "rgba(29,78,216,0.45)" : "rgba(255,255,255,0.1)"), borderRadius:999, color:compareMode === "generic" ? "#bfdbfe" : "#94a3b8", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}>??蟡???/button>
+            <button onClick={() => setCompareMode("version")} style={{ background:compareMode === "version" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.04)", border:"1px solid " + (compareMode === "version" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.1)"), borderRadius:999, color:compareMode === "version" ? "#ddd6fe" : "#94a3b8", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}>??????????/button>
+          </div>
+          {compareMode === "generic" ? (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>??蹓??刻麾</div>
+                <select value={compareLeftPath} onChange={e => setCompareLeftPath(e.target.value)} style={inputStyle}>
+                  {sources.map(item => (
+                    <option key={"left-" + item.id + item.path} value={item.path}>{item.id}?砭item.name}{item.review_status ? "?? + item.review_status : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>??啾???刻麾</div>
+                <select value={compareRightPath} onChange={e => setCompareRightPath(e.target.value)} style={inputStyle}>
+                  {sources.map(item => (
+                    <option key={"right-" + item.id + item.path} value={item.path}>{item.id}?砭item.name}{item.review_status ? "?? + item.review_status : ""}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:"grid", gap:10 }}>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?蝞???刻麾</div>
+                <select value={compareLeftPath} onChange={e => setCompareLeftPath(e.target.value)} style={inputStyle}>
+                  {sources.map(item => (
+                    <option key={"base-" + item.id + item.path} value={item.path}>{item.id}?砭item.name}{item.review_status ? "?? + item.review_status : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <button onClick={loadVersionCandidates} disabled={versionCandidatesBusy || !compareLeftPath} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(versionCandidatesBusy || !compareLeftPath) ? 0.6 : 1 }}>{versionCandidatesBusy ? "?謚???.." : "??????????}</button>
+                {versionCandidates.length > 0 && <div style={{ fontSize:12, color:"#cbd5e1", alignSelf:"center" }}>????{versionCandidates.length} ??謕???秧</div>}
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?謕???暑</div>
+                <select value={compareRightPath} onChange={e => setCompareRightPath(e.target.value)} style={inputStyle}>
+                  <option value="">?ｇ蹓??怏謕???秧</option>
+                  {versionCandidates.map(item => (
+                    <option key={"candidate-" + item.path} value={item.path}>{item.title}{item.version_label ? "?鬲???" + item.version_label : ""}{item.extension ? "?? + item.extension : ""}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:12 }}>
+            <button onClick={runDocumentCompare} disabled={compareBusy || !compareLeftPath || !compareRightPath} style={{ background:"linear-gradient(135deg,#1d4ed8,#7c3aed)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(compareBusy || !compareLeftPath || !compareRightPath) ? 0.6 : 1 }}>{compareBusy ? "?伍????.." : "?????刻麾?伍??"}</button>
+            <button onClick={exportDocumentCompareReport} disabled={compareExportBusy || !compareLeftPath || !compareRightPath} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(compareExportBusy || !compareLeftPath || !compareRightPath) ? 0.6 : 1 }}>{compareExportBusy ? "??穿??.." : "????餌捂??伍?????"}</button>
+            <button onClick={exportDocumentCompareWordReport} disabled={compareDocxExportBusy || !compareLeftPath || !compareRightPath} style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:"#e2e8f0", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity:(compareDocxExportBusy || !compareLeftPath || !compareRightPath) ? 0.6 : 1 }}>{compareDocxExportBusy ? "??穿??.." : "??? Word ?伍?????"}</button>
+          </div>
+          {compareMessage && <div style={{ marginTop:10, fontSize:12, color:"#c4b5fd" }}>{compareMessage}</div>}
+          {compareResult && (
+            <div style={{ marginTop:14, display:"grid", gap:10 }}>
+              {compareResult.version_change_conclusion && (
+                <div style={{ background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.18)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#93c5fd", fontWeight:700, marginBottom:6 }}>??暑?荒??</div>
+                  <div style={{ fontSize:12, color:"#dbeafe", lineHeight:1.7 }}>{compareResult.version_change_conclusion}</div>
+                  {compareResult.version_change_recommendation && <div style={{ marginTop:6, fontSize:12, color:"#bfdbfe" }}>{compareResult.version_change_recommendation}</div>}
+                </div>
+              )}
+              <div style={{ fontSize:12, color:"#e9d5ff", lineHeight:1.8, whiteSpace:"pre-wrap" }}>{compareResult.summary}</div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <Badge color="#7c3aed">?閮暹??{compareResult.similarity}</Badge>
+                <Badge color="#60a5fa">prompt {compareResult.prompt_version}</Badge>
+                {typeof compareResult.same_document_family === "boolean" && <Badge color={compareResult.same_document_family ? "#22c55e" : "#f59e0b"}>{compareResult.same_document_family ? "??????? : "??芣?????刻麾"}</Badge>}
+                {typeof compareResult.cache_hit === "boolean" && <Badge color={compareResult.cache_hit ? "#14b8a6" : "#64748b"}>{compareResult.cache_hit ? "?鞈剛??寞?" : "????殷??"}</Badge>}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div style={{ background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.18)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#fcd34d", fontWeight:700, marginBottom:6 }}>??啾??????寞?</div>
+                  {(compareResult.added_lines || []).slice(0, 6).map((item, idx) => (
+                    <div key={idx} style={{ fontSize:12, color:"#fde68a", lineHeight:1.6 }}>+ {item}</div>
+                  ))}
+                  {(!compareResult.added_lines || compareResult.added_lines.length === 0) && <div style={{ fontSize:12, color:"#94a3b8" }}>??賃????????????寞???/div>}
+                </div>
+                <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.18)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#fca5a5", fontWeight:700, marginBottom:6 }}>??蹓?擏???寞?</div>
+                  {(compareResult.removed_lines || []).slice(0, 6).map((item, idx) => (
+                    <div key={idx} style={{ fontSize:12, color:"#fecaca", lineHeight:1.6 }}>- {item}</div>
+                  ))}
+                  {(!compareResult.removed_lines || compareResult.removed_lines.length === 0) && <div style={{ fontSize:12, color:"#94a3b8" }}>??賃?????????謒??寞???/div>}
+                </div>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#e2e8f0", fontWeight:700, marginBottom:6 }}>??舀什?皜?????秋??餌???/div>
+                  {(compareResult.left_only_issues || []).map(item => (
+                    <div key={item.code} style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>- {item.title}</div>
+                  ))}
+                  {(!compareResult.left_only_issues || compareResult.left_only_issues.length === 0) && <div style={{ fontSize:12, color:"#94a3b8" }}>?嚚?/div>}
+                </div>
+                <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#e2e8f0", fontWeight:700, marginBottom:6 }}>??荒?皜?????秋??餌???/div>
+                  {(compareResult.right_only_issues || []).map(item => (
+                    <div key={item.code} style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>- {item.title}</div>
+                  ))}
+                  {(!compareResult.right_only_issues || compareResult.right_only_issues.length === 0) && <div style={{ fontSize:12, color:"#94a3b8" }}>?嚚?/div>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>?荒???????軋???/div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:10 }}>?鈭亙眺擗???刻麾?都赯?蹓????????????穿????荒???謘?頛??鞎?擗釭擐??/div>
+          <div style={{ display:"grid", gridTemplateColumns:"0.7fr 1.3fr auto", gap:10, alignItems:"end" }}>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?遴竣?</div>
+              <select value={historyMode} onChange={e => setHistoryMode(e.target.value)} style={inputStyle}>
+                <option value="all">??賂?/option>
+                <option value="audit">??刻麾?都赯?/option>
+                <option value="compare">??刻麾?伍??</option>
+                <option value="export">?????穿</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?謚殷??/div>
+              <input value={historyQuery} onChange={e => setHistoryQuery(e.target.value)} placeholder="?????task type?蹍禿ompt version?蹍河quest ?謢?" style={inputStyle} />
+            </div>
+            <button onClick={() => loadHistory()} disabled={historyBusy} style={{ background:"linear-gradient(135deg,#475569,#0f172a)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: historyBusy ? 0.6 : 1 }}>{historyBusy ? "??舫??.." : "?鈭亙眺????}</button>
+          </div>
+          {historyMessage && <div style={{ marginTop:10, fontSize:12, color:"#cbd5e1" }}>{historyMessage}</div>}
+          <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:8 }}>
+            {historyItems.map(item => (
+              <div key={item.id} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", marginBottom:6 }}>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    <Badge color="#38bdf8">{item.task_type}</Badge>
+                    <Badge color={item.result_status === "success" ? "#22c55e" : "#ef4444"}>{item.result_status}</Badge>
+                    {item.prompt_version && <Badge color="#a78bfa">{item.prompt_version}</Badge>}
+                  </div>
+                  <div style={{ fontSize:11, color:"#94a3b8" }}>{item.created_at ? item.created_at.slice(0, 19).replace("T", " ") : ""}</div>
+                </div>
+                <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6, whiteSpace:"pre-wrap" }}>{item.request_summary || "??request ?謢?"}</div>
+              </div>
+            ))}
+            {historyItems.length === 0 && <div style={{ fontSize:12, color:"#64748b" }}>?獢??垓???恬??瑞?????曇?????/div>}
+          </div>
+        </div>
+
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>SPC ?謢?</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <div style={{ gridColumn:"1 / -1" }}>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>??塗???</div>
+              <input value={spcForm.parameter_name} onChange={e => setSpcForm(prev => ({ ...prev, parameter_name: e.target.value }))} style={inputStyle} />
+            </div>
+            <div style={{ gridColumn:"1 / -1" }}>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?閰阬瞏???/div>
+              <textarea value={spcForm.csv_text} onChange={e => setSpcForm(prev => ({ ...prev, csv_text: e.target.value }))} style={{ ...inputStyle, minHeight:84, resize:"vertical" }} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>LSL</div>
+              <input value={spcForm.lsl} onChange={e => setSpcForm(prev => ({ ...prev, lsl: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>USL</div>
+              <input value={spcForm.usl} onChange={e => setSpcForm(prev => ({ ...prev, usl: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>Target</div>
+              <input value={spcForm.target} onChange={e => setSpcForm(prev => ({ ...prev, target: e.target.value }))} style={inputStyle} />
+            </div>
+          </div>
+          <button onClick={runSpcAnalyze} disabled={spcBusy} style={{ marginTop:12, background:"linear-gradient(135deg,#0f766e,#14b8a6)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: spcBusy ? 0.6 : 1 }}>{spcBusy ? "?????.." : "?嚗? SPC ?謢?"}</button>
+          {spcMessage && <div style={{ marginTop:10, fontSize:12, color:"#99f6e4" }}>{spcMessage}</div>}
+          {spcResult && (
+            <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:8 }}>
+                {[
+                  ["????, spcResult.metrics.mean],
+                  ["?????, spcResult.metrics.stdev],
+                  ["Cpk", spcResult.metrics.cpk ?? "n/a"],
+                  ["Cp", spcResult.metrics.cp ?? "n/a"],
+                  ["??????, spcResult.metrics.out_of_spec_count],
+                  ["???, spcResult.metrics.trend],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ background:"rgba(20,184,166,0.08)", border:"1px solid rgba(20,184,166,0.16)", borderRadius:10, padding:"10px 12px" }}>
+                    <div style={{ fontSize:11, color:"#99f6e4" }}>{label}</div>
+                    <div style={{ fontSize:14, color:"#e2e8f0", fontWeight:700, marginTop:4 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.7 }}>{spcResult.engineering_summary}</div>
+              <div style={{ fontSize:12, color:"#fef3c7", lineHeight:1.7 }}>{spcResult.management_summary}</div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>??刻麾?鈭????</div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginBottom:10 }}>???僕?謍唳???穿??????曇????????謕????????/div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+            <button onClick={() => setQaScope("selected")} style={{ background:qaScope === "selected" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.04)", border:"1px solid " + (qaScope === "selected" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.1)"), borderRadius:999, color:qaScope === "selected" ? "#ddd6fe" : "#94a3b8", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}>????獢???刻麾</button>
+            <button onClick={() => setQaScope("all")} style={{ background:qaScope === "all" ? "rgba(124,58,237,0.22)" : "rgba(255,255,255,0.04)", border:"1px solid " + (qaScope === "all" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.1)"), borderRadius:999, color:qaScope === "all" ? "#ddd6fe" : "#94a3b8", cursor:"pointer", padding:"6px 12px", fontSize:12, fontWeight:700 }}>?謚???賂??刻麾</button>
+          </div>
+          {qaScope === "selected" && (
+            <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:10 }}>
+              ?獢??????刻麾??span style={{ color:"#e9d5ff" }}>{sources.find(item => item.path === selectedPath)?.name || "??畸???}</span>
+            </div>
+          )}
+          <textarea value={qaQuestion} onChange={e => setQaQuestion(e.target.value)} style={{ ...inputStyle, minHeight:92, resize:"vertical" }} />
+          <button onClick={runKnowledgeQA} disabled={qaBusy} style={{ marginTop:12, background:"linear-gradient(135deg,#7c3aed,#a855f7)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: qaBusy ? 0.6 : 1 }}>{qaBusy ? "?豯???.." : "?????刻麾???"}</button>
+          {qaMessage && <div style={{ marginTop:10, fontSize:12, color:"#ddd6fe" }}>{qaMessage}</div>}
+          {qaResult && (
+            <div style={{ marginTop:14, display:"grid", gap:10 }}>
+              <div style={{ fontSize:11, color:"#94a3b8" }}>?豯??哨???爸qaResult.scope || "??賂豢?????鈭???}</div>
+              <div style={{ fontSize:12, color:"#e9d5ff", lineHeight:1.8, whiteSpace:"pre-wrap" }}>{qaResult.answer}</div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <Badge color="#a855f7">prompt {qaResult.prompt_version}</Badge>
+                <Badge color={qaResult.needs_human_review ? "#f59e0b" : "#22c55e"}>{qaResult.needs_human_review ? "???剔?璆菟?僚" : "????鈭止???}</Badge>
+              </div>
+              {(qaResult.insufficient_evidence || []).length > 0 && (
+                <div style={{ background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.18)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#fcd34d", fontWeight:700, marginBottom:6 }}>??????/div>
+                  {(qaResult.insufficient_evidence || []).map((item, idx) => (
+                    <div key={idx} style={{ fontSize:12, color:"#fde68a", lineHeight:1.6 }}>- {item}</div>
+                  ))}
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>????芣</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {(qaResult.citations || []).map((item, idx) => (
+                    <div key={idx} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                      <div style={{ fontSize:12, color:"#c4b5fd", marginBottom:4 }}>{item.title}</div>
+                      <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4 }}>{item.source_path}</div>
+                      <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>{item.preview}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:12 }}>??????仿</div>
+          <div style={{ display:"grid", gap:10 }}>
+            <div>
+              <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?????渲</div>
+              <textarea value={deviationForm.issue_description} onChange={e => setDeviationForm(prev => ({ ...prev, issue_description: e.target.value }))} style={{ ...inputStyle, minHeight:88, resize:"vertical" }} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>????遛?</div>
+                <input value={deviationForm.process_step} onChange={e => setDeviationForm(prev => ({ ...prev, process_step: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?撖?</div>
+                <input value={deviationForm.lot_no} onChange={e => setDeviationForm(prev => ({ ...prev, lot_no: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <div style={{ fontSize:12, color:"#cbd5e1", marginBottom:6 }}>?皝???/div>
+                <select value={deviationForm.severity} onChange={e => setDeviationForm(prev => ({ ...prev, severity: e.target.value }))} style={inputStyle}>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button onClick={runDeviationDraft} disabled={deviationBusy} style={{ marginTop:12, background:"linear-gradient(135deg,#dc2626,#f97316)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: deviationBusy ? 0.6 : 1 }}>{deviationBusy ? "?嚗???.." : "?嚗???????仿"}</button>
+          {deviationMessage && <div style={{ marginTop:10, fontSize:12, color:"#fdba74" }}>{deviationMessage}</div>}
+          {deviationResult && (
+            <div style={{ marginTop:14, display:"grid", gap:10 }}>
+              <div style={{ fontSize:12, color:"#fde68a", lineHeight:1.7 }}>{deviationResult.draft_summary}</div>
+              {[
+                ["?貔??", deviationResult.known_facts],
+                ["??迎??賹?", deviationResult.possible_causes],
+                ["?????僥????", deviationResult.containment_actions],
+                ["?防?????摮?", deviationResult.permanent_actions],
+                ["?踐???殷???, deviationResult.verification_plan],
+              ].map(([label, items]) => (
+                <div key={label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px" }}>
+                  <div style={{ fontSize:12, color:"#e2e8f0", fontWeight:700, marginBottom:6 }}>{label}</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    {(items || []).map((item, idx) => (
+                      <div key={idx} style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>- {item}</div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop:18, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:14, padding:18 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:12, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:"#e2e8f0" }}>??刻麾?謚??荒??</div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ ...inputStyle, width:260 }} />
+            <button onClick={runSearch} disabled={searchBusy} style={{ background:"rgba(56,189,248,0.16)", border:"1px solid rgba(56,189,248,0.3)", borderRadius:10, color:"#bae6fd", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700, opacity: searchBusy ? 0.6 : 1 }}>{searchBusy ? "?謚???.." : "????謚?"}</button>
+          </div>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {searchResults.map((item, idx) => (
+            <div key={idx} style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, padding:"10px 12px" }}>
+              <div style={{ fontSize:12, color:"#7dd3fc", marginBottom:4 }}>{item.title}</div>
+              <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4 }}>{item.source_path}</div>
+              <div style={{ fontSize:12, color:"#cbd5e1", lineHeight:1.6 }}>{item.preview}</div>
+            </div>
+          ))}
+          {searchResults.length === 0 && <div style={{ fontSize:12, color:"#64748b" }}>?垮謓?鈭??荒???????????????撗?謚??????岑?/div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ?????? REPORT TAB ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+function ReportTab({ instruments, documents, training, equipment, suppliers, nonConformances: ncs, auditPlans, envRecords }) {
+  const [generated, setGenerated] = useState(false);
+  const calibEnriched = instruments
+    .filter(i => i.status !== "?????)
+    .map(i => {
+    const nextDate = getInstrumentNextCalibrationDate(i);
+      return { ...i, nextDate, days: daysUntil(nextDate) };
+    });
+  const eqEnriched = equipment.map(eq => ({ ...eq, nextDate:addDays(eq.lastMaintenance,eq.intervalDays), days:daysUntil(addDays(eq.lastMaintenance,eq.intervalDays)) }));
+  const supEnriched = suppliers.map(s => ({ ...s, nextEvalDate:addDays(s.lastEvalDate,s.evalIntervalDays), days:daysUntil(addDays(s.lastEvalDate,s.evalIntervalDays)) }));
+  const overdue = calibEnriched.filter(i=>i.days<0).length;
+  const soonCalib = calibEnriched.filter(i=>i.days>=0&&i.days<=14).length;
+  const overdueEq = eqEnriched.filter(e=>e.days<0).length;
+  const openNcs = ncs.filter(n=>n.status!=="????).length;
+  const totalTraining = training.reduce((s,e)=>s+e.trainings.length,0);
+  const auditCompleted = auditPlans.filter(a=>a.status==="????).length;
+  const auditTotal = auditPlans.length;
+  const envPassRate = envRecords.length>0?Math.round(envRecords.filter(r=>r.result==="??僱").length/envRecords.length*100):0;
+  const tdStyle = { padding:"7px 12px", border:"1px solid #e2e8f0" };
+  const thStyle = { padding:"8px 12px", textAlign:"left", border:"1px solid #e2e8f0", background:"#f1f5f9" };
+  const secStyle = { fontSize:15, fontWeight:800, color:"#0f172a", paddingLeft:12, marginBottom:14 };
+  const conStyle = { marginTop:10, padding:12, background:"#f8fafc", borderRadius:8, fontSize:13, color:"#374151" };
+  return (
+    <div>
+      <SectionHeader title="?都赯????嚗??? color="#f472b6" />
+      <div style={{ background:"rgba(244,114,182,0.06)", border:"1px solid rgba(244,114,182,0.2)", borderRadius:14, padding:24, marginBottom:20 }}>
+        <div style={{ fontSize:15, color:"#f9a8d4", fontWeight:600, marginBottom:8 }}>[ISO 9001] ????嚗? ISO 9001:2015 ?都赯?謢????</div>
+        <div style={{ fontSize:13, color:"#64748b", lineHeight:1.7 }}>??蝯??軋僕?謍船?????謕?????殉死???????皝??????蹓曇澈?謕???蹓??箸葡???蹓?????蹓?????堊??蹓?????殉死???抬??賡??閰???????/div>
+        <div style={{ display:"flex", gap:12, marginTop:16 }}>
+          <button onClick={() => setGenerated(true)} style={{ background:"linear-gradient(135deg, #be185d, #ec4899)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>[+] ?嚗??都赯???</button>
+          {generated && (<button onClick={() => window.print()} style={{ background:"rgba(244,114,182,0.15)", border:"1px solid rgba(244,114,182,0.3)", borderRadius:10, color:"#f9a8d4", cursor:"pointer", padding:"12px 24px", fontSize:14, fontWeight:700 }}>[P] ?謅 / ?殉次蹌?PDF</button>)}
+        </div>
+      </div>
+      {generated && (
+        <div id="report-content" style={{ background:"#fff", color:"#1e293b", borderRadius:14, padding:32, fontFamily:"'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif" }}>
+          <div style={{ textAlign:"center", borderBottom:"2px solid #e2e8f0", paddingBottom:20, marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:800, color:"#0f172a" }}>??肅????蹌?鞈?????/div>
+            <div style={{ fontSize:16, fontWeight:600, color:"#374151", marginTop:4 }}>ISO 9001:2015 ?蹓暸??蝯?鞈?僚?謢????</div>
+            <div style={{ fontSize:13, color:"#6b7280", marginTop:8 }}>????嚗??鈭??爸formatDate(new Date().toISOString().split("T")[0])} / ?????秧?奕???∵??/div>
+          </div>
+{/* ??蹓??????MP-09 */}
+          <div style={{ marginBottom:24 }}>
+            <div style={{ ...secStyle, borderLeft:"4px solid #3b82f6" }}>??蹓??????????MP-09???鞊???/div>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f1f5f9" }}>{["????賣???,"???","?遴竣?","???綽赯??,"??瘣??亥縣","????].map(h=>(<th key={h} style={thStyle}>{h}</th>))}</tr></thead><tbody>{calibEnriched.map(i=>(<tr key={i.id}><td style={tdStyle}>{i.id}</td><td style={tdStyle}>{i.name}</td><td style={tdStyle}>{i.type}</td><td style={tdStyle}>{formatDate(i.calibratedDate)}</td><td style={tdStyle}>{formatDate(i.nextDate)}</td><td style={{...tdStyle,color:i.days<0?"#ef4444":i.days<=14?"#f97316":"#16a34a",fontWeight:700}}>{urgencyLabel(i.days)}</td></tr>))}</tbody></table>
+            <div style={conStyle}>?都赯梯???城??{instruments.length} ????秋??????? <b style={{color:"#ef4444"}}>{overdue}</b> ???14?剜????? <b style={{color:"#f97316"}}>{soonCalib}</b> ??蹌verdue>0&&" [???] ?ｇ?????????????踐?????}</div>
+          </div>
+          {/* ?哨?蹓曇澈?鞈芾澈??MP-04 */}
+          <div style={{ marginBottom:24 }}>
+            <div style={{ ...secStyle, borderLeft:"4px solid #f97316" }}>?哨?蹓曇澈?鞈芾澈?謕???MP-04???鞊???/div>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f1f5f9" }}>{["?桀???箏?","???","?選???,"???綽???,"??瘣駁豲?","????].map(h=>(<th key={h} style={thStyle}>{h}</th>))}</tr></thead><tbody>{eqEnriched.map(eq=>(<tr key={eq.id}><td style={tdStyle}>{eq.id}</td><td style={tdStyle}>{eq.name}</td><td style={tdStyle}>{eq.location}</td><td style={tdStyle}>{formatDate(eq.lastMaintenance)}</td><td style={tdStyle}>{formatDate(eq.nextDate)}</td><td style={{...tdStyle,color:eq.days<0?"#ef4444":eq.days<=30?"#f97316":"#16a34a",fontWeight:700}}>{urgencyLabel(eq.days)}</td></tr>))}</tbody></table>
+            <div style={conStyle}>?都赯梯???城??{equipment.length} ??澈?謕?????踐?? <b style={{color:"#ef4444"}}>{overdueEq}</b> ???/div>
+          </div>
+          {/* ??蹓箇??謜???MP-03 */}
+          <div style={{ marginBottom:24 }}>
+            <div style={{ ...secStyle, borderLeft:"4px solid #8b5cf6" }}>??蹓箇??謜?????殉瘥??P-03???鞊???/div>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f1f5f9" }}>{["??芣扔?箏?","?軋?","???","???","?????,"?殉瘥????,"?叟▼?????,"?????].map(h=>(<th key={h} style={thStyle}>{h}</th>))}</tr></thead><tbody>{training.map(emp=>(<tr key={emp.id}><td style={tdStyle}>{emp.id}</td><td style={{...tdStyle,fontWeight:600}}>{emp.name}</td><td style={tdStyle}>{emp.dept}</td><td style={tdStyle}>{emp.role}</td><td style={tdStyle}>{formatDate(emp.hireDate)}</td><td style={{...tdStyle,fontWeight:700}}>{emp.trainings.length}</td><td style={tdStyle}>{emp.trainings.filter(t=>t.type==="?叟▼?").length}</td><td style={tdStyle}>{emp.trainings.filter(t=>t.cert==="??).length}</td></tr>))}</tbody></table>
+            <div style={conStyle}>?都赯梯???城??{training.length} ??????殉瘥?殉死???? <b>{totalTraining}</b> ????/div>
+          </div>
+          {/* ?謜蹓???? MP-10 */}
+          <div style={{ marginBottom:24 }}>
+          <div style={{ ...secStyle, borderLeft:"4px solid #06b6d4" }}>?謜蹓澗????????????MP-12???鞊???/div>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f1f5f9" }}>{["????????,"???","?遴竣??,"?堊???","?堊???荒??","???綽???,"??瘣駁??"].map(h=>(<th key={h} style={thStyle}>{h}</th>))}</tr></thead><tbody>{supEnriched.map(s=>(<tr key={s.id}><td style={tdStyle}>{s.id}</td><td style={{...tdStyle,fontWeight:600}}>{s.name}</td><td style={tdStyle}>{s.category}</td><td style={{...tdStyle,fontWeight:700,color:s.evalScore>=90?"#16a34a":s.evalScore>=70?"#d97706":"#ef4444"}}>{s.evalScore}</td><td style={tdStyle}>{s.evalResult}</td><td style={tdStyle}>{formatDate(s.lastEvalDate)}</td><td style={{...tdStyle,color:s.days<0?"#ef4444":"#374151"}}>{formatDate(s.nextEvalDate)}</td></tr>))}</tbody></table>
+            <div style={conStyle}>?都赯梯???城??{suppliers.length} ?啣????????純?? <b style={{color:"#ef4444"}}>{supEnriched.filter(s=>s.days<0).length}</b> ?啣????颲??僱 <b style={{color:"#eab308"}}>{suppliers.filter(s=>s.evalResult==="??颲??僱").length}</b> ?啣???/div>
+          </div>
+          {/* ?叟??蹓???? MP-15 */}
+          <div style={{ marginBottom:24 }}>
+          <div style={{ ...secStyle, borderLeft:"4px solid #ef4444" }}>?叟??蹓???????????頦?MP-20???鞊???/div>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f1f5f9" }}>{["?箏?","?鈭?","???","?遴竣?","?皝???,"?芬???,"???,"?????,"????].map(h=>(<th key={h} style={thStyle}>{h}</th>))}</tr></thead><tbody>{ncs.map(nc=>(<tr key={nc.id}><td style={{...tdStyle,fontFamily:"monospace",fontSize:11}}>{nc.id}</td><td style={tdStyle}>{formatDate(nc.date)}</td><td style={tdStyle}>{nc.dept}</td><td style={tdStyle}>{nc.type}</td><td style={{...tdStyle,color:nc.severity==="???"?"#ef4444":"#d97706",fontWeight:700}}>{nc.severity}</td><td style={tdStyle}>{nc.description.substring(0,20)}{nc.description.length>20?"...":""}</td><td style={tdStyle}>{nc.responsible}</td><td style={tdStyle}>{formatDate(nc.dueDate)}</td><td style={{...tdStyle,color:nc.status==="?????"#16a34a":nc.status==="??????"#d97706":"#ef4444",fontWeight:700}}>{nc.status}</td></tr>))}</tbody></table>
+            <div style={conStyle}>?都赯梯???城??{ncs.length} ????????????????<b style={{color:"#ef4444"}}>{openNcs}</b> ???蹌penNcs>0&&" [???] ?ｇ?謆??啾秤?謚???梱???貔????鞈ｆ??蛛???撞??}</div>
+          </div>
+          {/* ??蹓鳴??賡???MP-09 */}
+          <div style={{ marginBottom:24 }}>
+          <div style={{ ...secStyle, borderLeft:"4px solid #8b5cf6" }}>??蹓鳴??賡??鞎???MP-17?貔????/div>
+            <div style={conStyle}>??貉?鞈?僚????<b>{auditCompleted}</b> ??/ ?殷???<b>{auditTotal}</b> ???堆???<b>{auditTotal>0?Math.round(auditCompleted/auditTotal*100):0}%</b>?蹇??殷?謒??{auditPlans.reduce((s,a)=>s+a.findings,0)} ?????瘜??{auditPlans.reduce((s,a)=>s+a.ncCount,0)} ??倦?/div>
+          </div>
+          {ENABLE_ENVIRONMENT_MODULE && (
+            <div style={{ marginBottom:24 }}>
+              <div style={{ ...secStyle, borderLeft:"4px solid #14b8a6" }}>??蹓餅扔?遴鬲???畸????MP-07???鞊???/div>
+              <div style={conStyle}>??璆?止??謆?? {envRecords.length} ????皝???僱??<b style={{color:envPassRate>=90?"#16a34a":envPassRate>=80?"#d97706":"#ef4444"}}>{envPassRate}%</b>????僱 <b style={{color:"#ef4444"}}>{envRecords.filter(r=>r.result==="?????).length}</b> ?????? <b style={{color:"#d97706"}}>{envRecords.filter(r=>r.result==="???").length}</b> ????/div>
+            </div>
+          )}
+          <div style={{ borderTop:"1px solid #e2e8f0", paddingTop:16, marginTop:24, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:16 }}>
+            {["?都赯??,"??赯??,"?閰???].map(role => (<div key={role} style={{ textAlign:"center" }}><div style={{ height:40, borderBottom:"1px solid #374151" }} /><div style={{ fontSize:12, color:"#6b7280", marginTop:6 }}>{role}??????</div></div>))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+
+// ?????? HELPERS ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+function loadStoredState(key, fallback) {
+  try {
+    if (typeof window === "undefined") return fallback;
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch (err) {
+    console.warn("Failed to load " + key, err);
+    return fallback;
+  }
+}
+
+function saveStoredState(key, value) {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn("Failed to save " + key, err);
+  }
+}
+
+async function apiJson(url, options = {}) {
+  const response = await fetch(url, options);
+  let payload = {};
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    payload = await response.json();
+  } else {
+    const bodyText = await response.text();
+    payload = bodyText ? { message: bodyText } : {};
+  }
+  if (!response.ok) {
+    throw new Error(payload.error || payload.message || `Request failed (${response.status})`);
+  }
+  return payload;
+}
+
+async function apiDeleteWithFallback(url, fallbackUrl) {
+  const response = await fetch(url, { method: "DELETE" });
+  let payload = {};
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    payload = await response.json();
+  } else {
+    const bodyText = await response.text();
+    payload = bodyText ? { message: bodyText } : {};
+  }
+  if (response.ok) return payload;
+  if (response.status === 405 && fallbackUrl) {
+    return apiJson(fallbackUrl, { method: "POST" });
+  }
+  throw new Error(payload.error || payload.message || `Request failed (${response.status})`);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildManagedFileUrl(path) {
+  return path ? toAbsoluteAppUrl(`/api/files/view?path=${encodeURIComponent(path)}`) : "";
+}
+
+function toAbsoluteAppUrl(url) {
+  const text = String(url || "").trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (typeof window === "undefined") return text;
+  if (text.startsWith("/")) return `${window.location.origin}${text}`;
+  return text;
+}
+
+function normalizeDisplayDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^\d{4}\.\d{2}\.\d{2}$/.test(text)) {
+    return text.replaceAll(".", "-");
+  }
+  return text;
+}
+
+function mapBurlanMasterToDocument(item) {
+  const sourcePath = String(item.path || "").trim();
+  const pdfSourcePath = String(item.pdf_path || "").trim();
+  const wordSourcePath = String(item.word_path || "").trim();
+  const fileType = String(item.file_type || "").trim().toLowerCase();
+  const managedUrl = buildManagedFileUrl(sourcePath);
+  return {
+    id: item.id || "",
+    name: item.name || "",
+    type: /^MM-/i.test(item.id || "") ? "??????" : "??????",
+    version: item.version || "",
+    department: item.department || "",
+    createdDate: normalizeDisplayDate(item.issue_date || ""),
+    author: "",
+    retentionYears: 16,
+    pdfPath: pdfSourcePath ? buildManagedFileUrl(pdfSourcePath) : (fileType === "pdf" ? managedUrl : ""),
+    docxPath: wordSourcePath ? buildManagedFileUrl(wordSourcePath) : ((fileType === "docx" || fileType === "doc") ? managedUrl : ""),
+    rawPath: sourcePath,
+    rawPdfPath: pdfSourcePath,
+    rawDocxPath: wordSourcePath,
+    selectedFile: item.selected_file || "",
+    folderPath: item.folder_path || "",
+    nextReview: normalizeDisplayDate(item.issue_date || ""),
+    reviewStatus: item.review_status || "",
+    reviewReason: item.review_reason || "",
+    sourceSystem: item.source_system || "burlan_official_master",
+  };
+}
+
+function getInstrumentNextCalibrationDate(item) {
+  if (item?.status === "?????) return "";
+  const calibratedDate = normalizeDisplayDate(item?.calibratedDate || "");
+  const intervalDays = Number(item?.intervalDays || 0);
+  if (calibratedDate && intervalDays > 0) {
+    return normalizeDisplayDate(addDays(calibratedDate, intervalDays));
+  }
+  return normalizeDisplayDate(item?.nextCalibration || "");
+}
+
+function mapCalibrationInstrument(item) {
+  const intervalDays = Number(item.intervalDays || 0);
+  const calibratedDate = normalizeDisplayDate(item.calibratedDate || "");
+  const nextCalibration = getInstrumentNextCalibrationDate({ ...item, calibratedDate, intervalDays });
+  return {
+    id: item.id || "",
+    name: item.name || "",
+    type: item.type || "",
+    location: item.location || "",
+    keeper: item.keeper || "",
+    brand: item.brand || "",
+    model: item.model || "",
+    serialNo: item.serialNo || "",
+    calibMethod: item.calibMethod || "",
+    calibratedDate,
+    intervalDays,
+    status: item.status || "?綽?⊿?,
+    nextCalibration,
+    needsMSA: Boolean(item.needsMSA),
+    frequencyLabel: item.frequencyLabel || "",
+    registeredDate: normalizeDisplayDate(item.registeredDate || ""),
+    manualRecordId: item.manualRecordId || "",
+    manualUpdatedAt: normalizeDisplayDate(String(item.manualUpdatedAt || "").slice(0, 10)),
+    manualNote: item.manualNote || "",
+    manualOperator: item.manualOperator || "",
+    rawInventoryPath: item.inventoryPath || "",
+    rawRecordPath: item.recordPath || "",
+    rawLatestReportPath: item.latestReportPath || "",
+    rawLatestPlanPath: item.latestPlanPath || "",
+    inventoryPath: item.inventoryPath ? buildManagedFileUrl(item.inventoryPath) : "",
+    recordPath: item.recordPath ? buildManagedFileUrl(item.recordPath) : "",
+    latestReportPath: item.latestReportPath ? buildManagedFileUrl(item.latestReportPath) : "",
+    latestPlanPath: item.latestPlanPath ? buildManagedFileUrl(item.latestPlanPath) : "",
+    sourceSystem: item.sourceSystem || "burlan_calibration_records",
+  };
+}
+
+function normalizeDocumentCode(value) {
+  return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function splitDocumentCodes(value) {
+  const matches = String(value || "").toUpperCase().match(/\b(?:MM|MP|FR|RC)-\d{2}\b/g);
+  return Array.from(new Set(matches || []));
+}
+
+function objectRows(value) {
+  return Array.isArray(value) ? value.filter(item => item && typeof item === "object") : [];
+}
+
+function buildDocumentLookup(documents) {
+  const lookup = new Map();
+  (Array.isArray(documents) ? documents : []).forEach(doc => {
+    const code = normalizeDocumentCode(doc?.id);
+    if (code && !lookup.has(code)) lookup.set(code, doc);
+  });
+  return lookup;
+}
+
+function getDocumentDisplayLabel(doc) {
+  if (!doc) return "";
+  const statusText = doc.reviewStatus ? `??{doc.reviewStatus}?? : "";
+  return `${doc.id} ${doc.name}${statusText}`;
+}
+
+function resolveRelatedDocument(value, documents) {
+  const raw = String(value || "").trim();
+  if (!raw) return { raw: "", code: "", doc: null };
+  const lookup = buildDocumentLookup(documents);
+  const normalized = normalizeDocumentCode(raw);
+  if (lookup.has(normalized)) {
+    return { raw, code: normalized, doc: lookup.get(normalized) };
+  }
+  const firstCode = splitDocumentCodes(raw)[0] || normalized;
+  return { raw, code: firstCode, doc: lookup.get(firstCode) || null };
+}
+
+function resolveScopeDocuments(scope, documents) {
+  const lookup = buildDocumentLookup(documents);
+  const codes = splitDocumentCodes(scope);
+  const matchedDocuments = [];
+  const unmatchedCodes = [];
+  codes.forEach(code => {
+    const matched = lookup.get(code);
+    if (matched) matchedDocuments.push(matched);
+    else unmatchedCodes.push(code);
+  });
+  return { codes, matchedDocuments, unmatchedCodes };
+}
+
+function isClosedNonConformanceStatus(status) {
+  return ["????, "????, "Closed"].includes(String(status || "").trim());
+}
+
+function buildAuditPlanNcSummary(plan, nonConformances) {
+  const auditId = String(plan?.id || "").trim();
+  const relatedItems = objectRows(nonConformances).filter(item => String(item?.sourceAuditPlanId || "").trim() === auditId);
+  const openItems = relatedItems.filter(item => !isClosedNonConformanceStatus(item?.status));
+  const closedItems = relatedItems.filter(item => isClosedNonConformanceStatus(item?.status));
+  const overdueItems = openItems.filter(item => daysUntil(item?.dueDate) < 0);
+  const closedDates = closedItems.map(item => item?.closeDate).filter(Boolean).sort();
+  return {
+    items: relatedItems,
+    total: relatedItems.length,
+    open: openItems.length,
+    closed: closedItems.length,
+    overdue: overdueItems.length,
+    latestCloseDate: closedDates.length ? closedDates[closedDates.length - 1] : "",
+  };
+}
+
+function buildNonConformanceDraftFromAuditPlan(plan, documents) {
+  const scopeInfo = resolveScopeDocuments(plan?.scope, documents || []);
+  const baseDate = plan?.actualDate || plan?.scheduledDate || new Date().toISOString().split("T")[0];
+  const relatedDocument = scopeInfo.matchedDocuments[0]?.id || scopeInfo.codes[0] || "";
+  const severity = Number(plan?.ncCount || 0) > 0 || Number(plan?.findings || 0) >= 3 ? "??瞍? : "????;
+  const deptText = String(plan?.dept || "").trim();
+  const auditId = String(plan?.id || "").trim();
+  const scopeText = String(plan?.scope || "").trim();
+
+  return {
+    seedKey: `${auditId || "audit"}-${Date.now()}`,
+    date: baseDate,
+    dept: deptText,
+    type: "??刻麾??瘜?,
+    description: auditId
+      ? `?璇??鞎???${auditId} ????臬????骨??蟡暑??瘜???????????渲?蹐?
+      : "?璇??鞎?????隡??ｇ????謓梁???????哨???????擗???,
+    severity,
+    rootCause: "",
+    correctiveAction: "",
+    responsible: String(plan?.auditee || "").trim(),
+    dueDate: addDays(baseDate, 14),
+    status: "?綽???,
+    closeDate: "",
+    effectiveness: "",
+    relatedDocument,
+    sourceAuditPlanId: auditId,
+    sourceAuditScope: scopeText,
+  };
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return 9999;
+  const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d - today) / 86400000);
+}
+
+function addDays(dateStr, days) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "?";
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const opsFieldLabels = {
+  scheduledDate: "????鈭?",
+  dept: "???",
+  scope: "?都赯梯??",
+  auditor: "?都赯??,
+  auditee: "?謅???,
+  date: "?瞏???,
+  description: "?????渲",
+  responsible: "????,
+  location: "???",
+};
+
+function formatMissingFields(fields) {
+  return (fields || []).map(field => opsFieldLabels[field] || field).join("??);
+}
+
+function urgencyColor(days) {
+  if (days < 0) return "#ef4444";
+  if (days <= 14) return "#f97316";
+  if (days <= 30) return "#eab308";
+  return "#22c55e";
+}
+
+function urgencyLabel(days) {
+  if (days === 9999) return "??迎??賹?";
+  if (days < 0) return `??? ${Math.abs(days)} ?剖?;
+  if (days === 0) return "??謑???";
+  return `??${days} ?剖?;
+}
+
+function urgencyBg(days) {
+  if (days < 0) return "rgba(239,68,68,0.12)";
+  if (days <= 14) return "rgba(249,115,22,0.12)";
+  if (days <= 30) return "rgba(234,179,8,0.12)";
+  return "rgba(34,197,94,0.08)";
+}
+
+function getEmployeeTrainingExpiry(employee) {
+  const topLevel = String(employee?.validUntil || "").trim();
+  const entryDates = (employee?.trainings || []).map(item => String(item?.validUntil || "").trim()).filter(Boolean);
+  const candidates = [topLevel, ...entryDates].filter(Boolean).sort();
+  return candidates[0] || "";
+}
+
+function getEquipmentNextMaintenanceDate(equipment) {
+  const lastMaintenance = normalizeDisplayDate(equipment?.lastMaintenance || "");
+  const intervalDays = Number(equipment?.intervalDays || 0);
+  if (lastMaintenance && intervalDays > 0) {
+    return addDays(lastMaintenance, intervalDays);
+  }
+  return normalizeDisplayDate(equipment?.nextMaintenance || "");
+}
+
+function getSupplierScore(supplier) {
+  const raw = supplier?.evalScore ?? supplier?.score ?? 0;
+  const value = parseFloat(raw);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function buildCalendarLink(item) {
+  const start = String(item.date || "").replaceAll("-", "");
+  const end = String(addDays(item.date, 1) || "").replaceAll("-", "");
+  const details = [
+    item.module ? "???: " + item.module : "",
+    item.summary ? "?謢?: " + item.summary : "",
+    item.owner ? "?滿?? " + item.owner : "",
+  ].filter(Boolean).join("\n");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: item.title || "?都赯???",
+    dates: start + "/" + end,
+    details,
+  });
+  return "https://calendar.google.com/calendar/render?" + params.toString();
+}
+
+function collectNotificationItems({ instruments, documents, equipment, suppliers, nonConformances, auditPlans }) {
+  const items = [];
+
+  instruments.forEach(inst => {
+    const date = addDays(inst.calibratedDate, inst.intervalDays);
+    const days = daysUntil(date);
+    if (!date || days > 30) return;
+    items.push({
+      key: "instrument-" + inst.id,
+      sourceType: "instrument",
+      priority: days < 0 ? "high" : days <= 14 ? "medium" : "low",
+      title: "????踐???????" + inst.name,
+      module: "MP-09 ??脰?????",
+      date,
+      summary: `${inst.id} ??瘣??亥縣??${formatDate(date)}??{urgencyLabel(days)}`,
+      owner: inst.keeper || inst.location || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  documents.forEach(doc => {
+    const date = addDays(doc.createdDate, 365);
+    const days = daysUntil(date);
+    if (!date || days > 45) return;
+    items.push({
+      key: "document-" + doc.id,
+      sourceType: "document",
+      priority: days < 0 ? "high" : "low",
+      title: "??刻麾?虜瞍脫????? + doc.name,
+      module: "MP-01 ??刻麾?謘??殷????,
+      date,
+      summary: `${doc.id} ?梁???皜豢撞??貔??${formatDate(date)}????蹌剜蝞??鈭??蹎??儐,
+      owner: doc.author || doc.department || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  equipment.forEach(eq => {
+    const date = getEquipmentNextMaintenanceDate(eq);
+    const days = daysUntil(date);
+    if (!date || days > 30) return;
+    items.push({
+      key: "equipment-" + eq.id,
+      sourceType: "equipment",
+      priority: days < 0 ? "high" : days <= 14 ? "medium" : "low",
+      title: "?桀???踐??????? + eq.name,
+      module: "MP-08 ?桀?謘?????",
+      date,
+      summary: `${eq.id} ??瘣駁豲???${formatDate(date)}??{urgencyLabel(days)}`,
+      owner: eq.location || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  suppliers.forEach(supplier => {
+    const date = addDays(supplier.lastEvalDate, supplier.evalIntervalDays);
+    const days = daysUntil(date);
+    if (!date || days > 30) return;
+    items.push({
+      key: "supplier-" + supplier.id,
+      sourceType: "supplier",
+      priority: days < 0 ? "high" : "low",
+      title: "????????????" + supplier.name,
+      module: "MP-12 ????????????",
+      date,
+      summary: `${supplier.id} ??瘣駁????${formatDate(date)}?謆?????${supplier.evalResult}`,
+      owner: supplier.contact || supplier.category || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  nonConformances.forEach(nc => {
+    const days = daysUntil(nc.dueDate);
+    if (!nc.dueDate || nc.status === "???? || days > 30) return;
+    items.push({
+      key: "nc-" + nc.id,
+      sourceType: "nc",
+      priority: days < 0 ? "high" : "medium",
+      title: "??餈????擗釭擐勗?? + nc.id,
+      module: "MP-20 ??瘜?????餈????",
+      date: nc.dueDate,
+      summary: `${nc.dept}??{nc.description}`,
+      owner: nc.responsible || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  auditPlans.forEach(plan => {
+    const days = daysUntil(plan.scheduledDate);
+    if (!plan.scheduledDate || plan.status === "???? || days > 30) return;
+    items.push({
+      key: "audit-" + plan.id,
+      sourceType: "audit",
+      priority: days < 0 ? "high" : "medium",
+      title: "??貉?鞈?僚????? + plan.dept,
+      module: "MP-17 ??貉?鞈?僚???",
+      date: plan.scheduledDate,
+      summary: `${plan.id} ?都赯望??? ${plan.auditee}???閰制 ${plan.auditor}`,
+      owner: plan.auditor || "",
+      days,
+      statusText: urgencyLabel(days),
+    });
+  });
+
+  return items.sort((a, b) => {
+    const left = new Date(a.date).getTime();
+    const right = new Date(b.date).getTime();
+    return left - right;
+  });
+}
+
+// ?????? SHARED COMPONENTS ????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+const uiTheme = {
+  panel: "linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 100%)",
+  panelSoft: "rgba(255,255,255,0.035)",
+  panelBorder: "rgba(148,163,184,0.16)",
+  text: "#e2e8f0",
+  textMuted: "#94a3b8",
+  textSoft: "#64748b",
+  shadow: "0 24px 60px rgba(2, 6, 23, 0.28)",
+};
+
+function buttonStyle(variant = "secondary", disabled = false) {
+  const map = {
+    primary: {
+      background: "linear-gradient(135deg, #0284c7, #38bdf8)",
+      color: "#fff",
+      border: "none",
+      boxShadow: "0 10px 24px rgba(14,165,233,0.22)",
+    },
+    secondary: {
+      background: "rgba(255,255,255,0.045)",
+      color: "#dbeafe",
+      border: "1px solid rgba(148,163,184,0.18)",
+      boxShadow: "none",
+    },
+    success: {
+      background: "linear-gradient(135deg, #15803d, #22c55e)",
+      color: "#fff",
+      border: "none",
+      boxShadow: "0 10px 24px rgba(34,197,94,0.18)",
+    },
+    warning: {
+      background: "linear-gradient(135deg, #c2410c, #f97316)",
+      color: "#fff",
+      border: "none",
+      boxShadow: "0 10px 24px rgba(249,115,22,0.18)",
+    },
+    danger: {
+      background: "rgba(239,68,68,0.12)",
+      color: "#fecaca",
+      border: "1px solid rgba(239,68,68,0.24)",
+      boxShadow: "none",
+    },
+  };
+  return {
+    ...map[variant],
+    borderRadius: 12,
+    cursor: disabled ? "not-allowed" : "pointer",
+    padding: "10px 16px",
+    fontSize: 13,
+    fontWeight: 700,
+    opacity: disabled ? 0.6 : 1,
+    transition: "all 0.2s ease",
+  };
+}
+
+const tableShellStyle = {
+  overflowX: "auto",
+  background: "rgba(2, 6, 23, 0.16)",
+  border: "1px solid rgba(148,163,184,0.12)",
+  borderRadius: 16,
+};
+
+const tableHeadCellStyle = {
+  padding: "12px 10px",
+  borderBottom: "1px solid rgba(148,163,184,0.14)",
+  color: "#94a3b8",
+  fontSize: 12,
+  fontWeight: 700,
+  textAlign: "left",
+  letterSpacing: 0.2,
+};
+
+const tableRowCellStyle = {
+  padding: "9px 10px",
+  borderBottom: "1px solid rgba(148,163,184,0.08)",
+};
+
+function PageIntro({ eyebrow, title, description, actions, children }) {
+  return (
+    <div style={{
+      background: "linear-gradient(180deg, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.72) 100%)",
+      border: "1px solid rgba(148,163,184,0.16)",
+      borderRadius: 20,
+      padding: 24,
+      marginBottom: 20,
+      boxShadow: uiTheme.shadow,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ minWidth: 280, flex: 1 }}>
+          {eyebrow && <div style={{ fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "#7dd3fc", fontWeight: 800, marginBottom: 10 }}>{eyebrow}</div>}
+          <div style={{ fontSize: 28, lineHeight: 1.1, fontWeight: 800, color: uiTheme.text }}>{title}</div>
+          {description && <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.8, color: uiTheme.textMuted, maxWidth: 760 }}>{description}</div>}
+        </div>
+        {actions && <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>{actions}</div>}
+      </div>
+      {children && <div style={{ marginTop: 18 }}>{children}</div>}
+    </div>
+  );
+}
+
+function DocumentsSourceBanner({ info }) {
+  if (!info) return null;
+
+  const usingMaster = info.mode === "master";
+  const background = usingMaster ? "rgba(34,197,94,0.08)" : "rgba(245,158,11,0.08)";
+  const border = usingMaster ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(245,158,11,0.25)";
+  const titleColor = usingMaster ? "#86efac" : "#fcd34d";
+
+  return (
+    <div style={{ marginTop: 14, background, border, borderRadius: 14, padding: 14, display: "grid", gap: 6 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: titleColor }}>
+            ?獢???????爸usingMaster ? "??肅?餈斗???????荒?" : "??寥?謕???"}
+      </div>
+      <div style={{ fontSize: 13, color: uiTheme.textMuted }}>
+        ?獢??????刻麾 {info.count || 0} ????綽??鈭色??{info.pending_review_count || 0} ?閉??
+      </div>
+      {info.source_path && (
+        <div style={{ fontSize: 12, color: "#cbd5f5", wordBreak: "break-all" }}>
+          ????獢??菜捕?{info.source_path}
+        </div>
+      )}
+      {info.message && <div style={{ fontSize: 12, color: "#cbd5f5" }}>{info.message}</div>}
+    </div>
+  );
+}
+
+function ModuleStatusBanner({ title, message, tone = "demo" }) {
+  const palette = tone === "mixed"
+    ? { background:"rgba(59,130,246,0.08)", border:"1px solid rgba(59,130,246,0.22)", title:"#93c5fd", text:"#cbd5f5" }
+    : tone === "system"
+    ? { background:"rgba(16,185,129,0.08)", border:"1px solid rgba(16,185,129,0.22)", title:"#86efac", text:"#d1fae5" }
+    : { background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.22)", title:"#fcd34d", text:"#fde68a" };
+
+  return (
+    <div style={{ marginBottom: 18, background: palette.background, border: palette.border, borderRadius: 14, padding: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: palette.title, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 12, lineHeight: 1.8, color: palette.text }}>{message}</div>
+    </div>
+  );
+}
+
+function Panel({ title, description, actions, accent = "#60a5fa", children, style = {} }) {
+  return (
+    <div style={{
+      background: uiTheme.panel,
+      border: `1px solid ${accent}28`,
+      borderRadius: 18,
+      padding: 20,
+      boxShadow: uiTheme.shadow,
+      ...style,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 14 }}>
+        <div style={{ minWidth: 220, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 999, background: accent, boxShadow: `0 0 0 6px ${accent}18` }} />
+            <div style={{ fontSize: 16, fontWeight: 800, color: uiTheme.text }}>{title}</div>
+          </div>
+          {description && <div style={{ fontSize: 12, color: uiTheme.textMuted, lineHeight: 1.7 }}>{description}</div>}
+        </div>
+        {actions && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ color, children }) {
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "4px 10px",
+      borderRadius: 99,
+      background: color + "18",
+      color,
+      fontSize: 12,
+      fontWeight: 700,
+      border: `1px solid ${color}38`,
+      letterSpacing: 0.3,
+    }}>{children}</span>
+  );
+}
+
+function getParserBadge(parserName) {
+  if (parserName === "opendataloader_pdf") {
+    return { color: "#14b8a6", label: "????OpenDataLoader" };
+  }
+  if (parserName === "legacy_pypdf") {
+    return { color: "#f59e0b", label: "????pypdf" };
+  }
+  return null;
+}
+
+function getLayoutBadge(item) {
+  const pageCount = Number(item?.layout_page_count || 0);
+  const elementCount = Number(item?.layout_element_count || 0);
+  if (!item?.layout_available && !pageCount && !elementCount) return null;
+  return {
+    color: "#38bdf8",
+    label: `????堊垢? ${pageCount} ??/ ${elementCount} ????,
+  };
+}
+
+class PageErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("PageErrorBoundary", this.props.pageName || "page", error, info);
+  }
+
+  resetPageState = () => {
+    try {
+      const keys = Array.isArray(this.props.storageKeys) ? this.props.storageKeys : [];
+      keys.forEach((key) => window.localStorage.removeItem(key));
+    } catch (err) {
+      console.warn("Failed to clear page storage", err);
+    }
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div style={{ background:"rgba(127,29,29,0.18)", border:"1px solid rgba(248,113,113,0.35)", borderRadius:18, padding:24, color:"#fee2e2" }}>
+        <div style={{ fontSize:24, fontWeight:800, marginBottom:10 }}>???????????</div>
+        <div style={{ fontSize:14, lineHeight:1.8, color:"#fecaca", marginBottom:14 }}>
+          {this.props.pageName || "????"} ???????????????????????????????????
+        </div>
+        <div style={{ fontSize:13, color:"#fde68a", marginBottom:16 }}>
+          ?????{String(this.state.error && this.state.error.message || this.state.error || "????")}
+        </div>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+          <button onClick={this.resetPageState} style={{ background:"linear-gradient(135deg,#dc2626,#ef4444)", border:"none", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700 }}>
+            ???????????
+          </button>
+          <button onClick={() => window.location.href='/?tab=home'} style={{ background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"#fff", cursor:"pointer", padding:"10px 16px", fontSize:13, fontWeight:700 }}>
+            ?????
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+function StatCard({ label, value, color, sub }) {
+  return (
+    <div style={{
+      background: uiTheme.panel,
+      border: "1px solid " + uiTheme.panelBorder,
+      borderRadius: 18,
+      padding: "22px 24px",
+      flex: 1,
+      minWidth: 150,
+      borderTop: `3px solid ${color}`,
+      boxShadow: uiTheme.shadow,
+    }}>
+      <div style={{ fontSize: 32, fontWeight: 800, color, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 13, color: uiTheme.textMuted, marginTop: 8, fontWeight: 700 }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: uiTheme.textSoft, marginTop: 6, lineHeight: 1.6 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SectionHeader({ title, count, color = "#60a5fa" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <div style={{ width: 5, height: 22, background: color, borderRadius: 3 }} />
+      <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: uiTheme.text }}>{title}</h2>
+      {count !== undefined && (
+        <span style={{ background: color + "18", color, borderRadius: 99, padding: "3px 10px", fontSize: 12, fontWeight: 700, border: `1px solid ${color}33` }}>{count}</span>
+      )}
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }} onClick={onClose}>
+      <div style={{
+        background: "#162033", borderRadius: 20, padding: 32, maxWidth: 700, width: "100%",
+        maxHeight: "85vh", overflow: "auto", border: "1px solid rgba(148,163,184,0.18)",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h3 style={{ margin: 0, fontSize: 18, color: uiTheme.text, fontWeight: 800 }}>{title}</h3>
+          <button onClick={onClose} style={{
+            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(148,163,184,0.14)", borderRadius: 10,
+            color: uiTheme.textMuted, cursor: "pointer", padding: "8px 14px", fontSize: 13, fontWeight: 700,
+          }}>???謚?</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(148,163,184,0.18)",
+  borderRadius: 12,
+  padding: "10px 12px",
+  color: "#e2e8f0",
+  fontSize: 14,
+  width: "100%",
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+// ?????? CALIBRATION TAB ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
